@@ -1,0 +1,23 @@
+---
+import Avatar from "./Avatar.astro";
+
+export interface Props {
+  entry: any;
+}
+
+const { entry } = Astro.props;
+const { data, id } = entry;
+---
+
+<a
+  href={`/team/member/${id}`}
+  class="flex flex-col items-center rounded-lg border border-neutral-200 dark:border-neutral-700 p-5 text-center hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors"
+>
+  <Avatar name={data.name} size={72} />
+  <h3 class="mt-3 font-medium text-neutral-900 dark:text-neutral-100">{data.name}</h3>
+  <p class="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{data.role}</p>
+  <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400 leading-snug">{data.focus}</p>
+  {data.email && (
+    <p class="mt-2 text-xs text-neutral-400 dark:text-neutral-500 truncate max-w-full">{data.email}</p>
+  )}
+</a>

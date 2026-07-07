@@ -1,17 +1,47 @@
 ---
-
+import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout title="Home" description="QRNLab — Bridging Nuclear, Quantum, and Astrophysical Frontiers through Research and Innovation">
+  <section class="mb-16">
+    <h1 class="text-4xl font-semibold tracking-tight">QRNLab</h1>
+    <p class="mt-2 text-lg text-neutral-500 dark:text-neutral-400 max-w-3xl">
+      Bridging Nuclear, Quantum, and Astrophysical Frontiers through Research and Innovation
+    </p>
+    <p class="mt-6 text-neutral-700 dark:text-neutral-300 leading-relaxed max-w-3xl">
+      QRNLab is a multidisciplinary research group dedicated to advancing fundamental and applied physics. Our work spans a wide spectrum of domains, from nuclear and medical physics to quantum computing and astrophysics. The lab operates under the guidance of Dr. Quazi Muhammad Rashed Nizam, whose expertise in nuclear physics forms the foundation of our experimental and theoretical investigations.
+    </p>
+  </section>
+
+  <section class="grid gap-6 sm:grid-cols-2">
+    <a href="/research" class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-6 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
+      <h2 class="text-lg font-medium text-neutral-900 dark:text-neutral-100">Research</h2>
+      <p class="mt-1.5 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+        Nuclear interactions, radiation shielding, quantum physics, and quantum computing.
+      </p>
+    </a>
+    <a href="/team" class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-6 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
+      <h2 class="text-lg font-medium text-neutral-900 dark:text-neutral-100">Team</h2>
+      <p class="mt-1.5 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+        Meet our principal investigator, current members, and alumni.
+      </p>
+    </a>
+    <a href="/publications" class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-6 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
+      <h2 class="text-lg font-medium text-neutral-900 dark:text-neutral-100">Publications</h2>
+      <p class="mt-1.5 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+        Journal papers and conference attendings.
+      </p>
+    </a>
+    <a href="/education" class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-6 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
+      <h2 class="text-lg font-medium text-neutral-900 dark:text-neutral-100">Education &amp; Outreach</h2>
+      <p class="mt-1.5 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+        Lecture notes, presentation slides, and workshops.
+      </p>
+    </a>
+  </section>
+
+  <section class="mt-16">
+    <h2 class="text-xl font-semibold tracking-tight">Latest Updates</h2>
+    <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400 italic">No updates yet.</p>
+  </section>
+</BaseLayout>

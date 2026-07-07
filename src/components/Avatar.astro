@@ -1,0 +1,44 @@
+---
+export interface Props {
+  name: string;
+  size?: number;
+}
+
+const { name, size = 80 } = Astro.props;
+
+const parts = name.trim().split(/\s+/);
+const initials = parts.length >= 2
+  ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  : name.slice(0, 2).toUpperCase();
+
+let hash = 0;
+for (let i = 0; i < name.length; i++) {
+  hash = name.charCodeAt(i) + ((hash << 5) - hash);
+}
+const hue = ((hash % 360) + 360) % 360;
+const bg = `hsl(${hue}, 50%, 40%)`;
+---
+
+<svg
+  width={size}
+  height={size}
+  viewBox="0 0 80 80"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  aria-label={`${name} avatar`}
+  role="img"
+>
+  <rect width="80" height="80" rx="40" fill={bg} />
+  <text
+    x="40"
+    y="40"
+    text-anchor="middle"
+    dominant-baseline="central"
+    fill="white"
+    font-size="28"
+    font-weight="600"
+    font-family="system-ui, sans-serif"
+  >
+    {initials}
+  </text>
+</svg>

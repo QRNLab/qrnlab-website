@@ -1,0 +1,106 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Avatar from "../components/Avatar.astro";
+import MemberCard from "../components/MemberCard.astro";
+import AlumniCard from "../components/AlumniCard.astro";
+import { getCollection } from "astro:content";
+
+const all = await getCollection("team");
+const pi = all.filter((e) => e.data.category === "pi");
+const members = all.filter((e) => e.data.category === "member");
+const alumni = all.filter((e) => e.data.category === "alumni");
+
+const SHOW_INITIAL = 8;
+---
+
+<BaseLayout title="Team" description="QRNLab team members and alumni">
+  <h1 class="text-3xl font-semibold tracking-tight">Team</h1>
+
+  <section class="mt-8">
+    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">
+      Principal Investigator
+    </h2>
+    {pi.map((entry) => (
+      <a
+        href={`/team/pi/${entry.id}`}
+        class="mt-4 flex items-center gap-5 rounded-lg border border-neutral-200 dark:border-neutral-700 p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors"
+      >
+        <Avatar name={entry.data.name} size={72} />
+        <div>
+          <h3 class="text-lg font-medium text-neutral-900 dark:text-neutral-100">{entry.data.name}</h3>
+          {entry.data.title && (
+            <p class="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">{entry.data.title}</p>
+          )}
+        </div>
+      </a>
+    ))}
+  </section>
+
+  <section class="mt-12">
+    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">
+      Current Members
+    </h2>
+    <div id="members" class="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      {members.slice(0, SHOW_INITIAL).map((entry) => (
+        <MemberCard entry={entry} />
+      ))}
+      {members.slice(SHOW_INITIAL).map((entry, i) => (
+        <div class="hidden" data-index={i}>
+          <MemberCard entry={entry} />
+        </div>
+      ))}
+    </div>
+    {members.length > SHOW_INITIAL && (
+      <p class="mt-6 text-center">
+        <button
+          id="show-more-members"
+          onclick="showMore('members')"
+          class="cursor-pointer rounded border border-neutral-300 dark:border-neutral-600 px-5 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        >
+          Show more ({members.length - SHOW_INITIAL})
+        </button>
+      </p>
+    )}
+  </section>
+
+  <section class="mt-12">
+    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">
+      Alumni
+    </h2>
+    <div id="alumni" class="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      {alumni.slice(0, SHOW_INITIAL).map((entry) => (
+        <AlumniCard entry={entry} />
+      ))}
+      {alumni.slice(SHOW_INITIAL).map((entry, i) => (
+        <div class="hidden" data-index={i}>
+          <AlumniCard entry={entry} />
+        </div>
+      ))}
+    </div>
+    {alumni.length > SHOW_INITIAL && (
+      <p class="mt-6 text-center">
+        <button
+          id="show-more-alumni"
+          onclick="showMore('alumni')"
+          class="cursor-pointer rounded border border-neutral-300 dark:border-neutral-600 px-5 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        >
+          Show more ({alumni.length - SHOW_INITIAL})
+        </button>
+      </p>
+    )}
+  </section>
+</BaseLayout>
+
+<script is:inline>
+  function showMore(id) {
+    var container = document.getElementById(id);
+    var hidden = container.querySelectorAll(".hidden[data-index]");
+    hidden.forEach(function (el, i) {
+      el.classList.remove("hidden");
+      el.style.animation = "fadeInUp 0.3s ease forwards";
+      el.style.animationDelay = (i * 80) + "ms";
+    });
+    var btn = document.getElementById("show-more-" + id);
+    if (btn) btn.remove();
+  }
+</script>

@@ -1,0 +1,114 @@
+---
+import "../styles/global.css";
+
+export interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+function isActive(href: string): boolean {
+  if (href === "/team") return currentPath === href || currentPath.startsWith("/team/");
+  return currentPath === href;
+}
+
+const navItems = [
+  { href: "/", label: "Home" },
+  { href: "/about", label: "About" },
+  { href: "/research", label: "Research" },
+  { href: "/team", label: "Team" },
+  { href: "/publications", label: "Publications" },
+  { href: "/affiliates", label: "Affiliates" },
+  { href: "/education", label: "Education" },
+  { href: "/blog", label: "Blog" },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description ?? "QRNLab — research laboratory"} />
+    <title>{title} | QRNLab</title>
+    <script is:inline>
+      (function () {
+        var stored = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (stored === "dark" || (!stored && prefersDark)) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+  </head>
+  <body class="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans antialiased transition-colors duration-200">
+    <header class="bg-[#0b0d39] dark:bg-[#f4f2c7]">
+      <nav class="relative mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+        <a href="/" class="text-lg font-semibold tracking-tight text-white dark:text-[#0b0d39]">QRNLab</a>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label="Toggle dark mode"
+            onclick="toggleDarkMode()"
+            class="p-2 text-white/80 hover:text-white dark:text-black/80 dark:hover:text-[#0b0d39] transition-colors"
+          >
+            <span class="dark:hidden" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </span>
+            <span class="hidden dark:inline" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </span>
+          </button>
+          <button
+            type="button"
+            aria-label="Menu"
+            onclick="toggleMobileNav()"
+            class="p-2 text-white/80 hover:text-white dark:text-black/80 dark:hover:text-[#0b0d39] md:hidden transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+        </div>
+
+        <ul id="nav-links" class="hidden absolute left-0 right-0 top-full z-50 flex-col bg-[#0b0d39] dark:bg-[#f4f2c7] px-4 pb-4 shadow-lg md:static md:z-auto md:flex md:flex-row md:items-center md:gap-6 md:bg-transparent md:dark:bg-transparent md:p-0 md:ml-auto md:text-sm md:shadow-none">
+          {navItems.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                class={`block py-3 md:py-0 ${isActive(item.href)
+                  ? "text-amber-400 dark:text-[#575cc7] font-medium"
+                  : "text-white/80 dark:text-black/80 hover:text-white dark:hover:text-[#0b0d39] transition-colors"
+                }`}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </header>
+    <main class="mx-auto max-w-5xl px-4 py-8 sm:py-12">
+      <slot />
+    </main>
+    <footer class="border-t border-neutral-200 dark:border-neutral-700">
+      <div class="mx-auto max-w-5xl px-4 py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+        &copy; {new Date().getFullYear()} QRNLab
+      </div>
+    </footer>
+    <script is:inline>
+      function toggleDarkMode() {
+        var html = document.documentElement;
+        html.classList.toggle("dark");
+        localStorage.setItem("theme", html.classList.contains("dark") ? "dark" : "light");
+      }
+      function toggleMobileNav() {
+        document.getElementById("nav-links").classList.toggle("hidden");
+      }
+    </script>
+  </body>
+</html>

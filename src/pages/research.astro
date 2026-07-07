@@ -1,0 +1,92 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
+
+const allProjects = await getCollection("projects", ({ data }) => data.status === "active");
+const allTeam = await getCollection("team");
+
+const teamRoute = new Map<string, string>();
+for (const m of allTeam) {
+  const prefix = m.data.category === "pi" ? "pi" : m.data.category === "member" ? "member" : "alumni";
+  teamRoute.set(m.data.name, `/team/${prefix}/${m.id}`);
+}
+
+const domains = [
+  {
+    id: "nuclear-interactions",
+    label: "1. Nuclear Interactions",
+    body: "We study heavy ion interactions to understand the interaction mechanism. We hope to uncover the hidden laws of the universe by studying the nucleus. We wish to enrich proper understanding of heavy ion interaction for proper use of these ions in cancer therapy.",
+  },
+  {
+    id: "radiation-shielding",
+    label: "2. Radiation Shielding and Measurement",
+    body: "We deal with the interaction of radiation with matter and investigate the harmful effects of secondary particles after fragmentation. Our research has real world applications in designing and developing shielding material for space shuttles to protect astronauts from radiation. This study can also help to assess the safety of astronauts from space radiation.",
+  },
+  {
+    id: "quantum-physics",
+    label: "3. Quantum Physics",
+    body: "We study the laws of physics from the quantum perspective, which is essential to understand the universe at a micro level. Additionally, we wish to enhance quantum physics education in our country.",
+  },
+  {
+    id: "quantum-computing",
+    label: "4. Quantum Computing",
+    body: "We are preparing to take the quantum leap with the rest of the world. Quantum computing is one of the pioneering fields of research. The United Nations has designated 2025 as the International Year of Quantum Science and Technology (IYQ). We wish to develop efficient quantum state and energy teleportation protocols for quantum communication.",
+  },
+];
+---
+
+<BaseLayout title="Research" description="QRNLab research domains and active projects">
+  <h1 class="text-3xl font-semibold tracking-tight">Research</h1>
+
+  <section class="mt-8 space-y-16">
+    {domains.map((domain) => {
+      const projects = allProjects.filter((p) => p.data.domain === domain.id);
+      return (
+        <div>
+          <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">{domain.label}</h2>
+          <p class="mt-4 text-neutral-700 dark:text-neutral-300 leading-relaxed max-w-3xl">{domain.body}</p>
+
+          {projects.length > 0 && (
+            <div class="mt-6 space-y-4">
+              <h3 class="text-lg font-medium text-neutral-900 dark:text-neutral-100">Active Projects</h3>
+              {projects.map((entry) => {
+                const { data, body } = entry;
+                return (
+                  <div class="rounded-lg border border-neutral-200 dark:border-neutral-700 p-5">
+                    <h4 class="font-medium text-neutral-900 dark:text-neutral-100">{data.title}</h4>
+                    <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                      Lead: {teamRoute.has(data.lead)
+                        ? <a href={teamRoute.get(data.lead)} class="text-blue-700 dark:text-blue-400 hover:underline">{data.lead}</a>
+                        : data.lead
+                      }
+                    </p>
+                    {data.researchers && data.researchers.length > 0 && (
+                      <p class="text-xs text-neutral-400 dark:text-neutral-500">
+                        Researchers: {data.researchers.join(", ")}
+                      </p>
+                    )}
+                    {body && (
+                      <p class="mt-3 text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">{body.trim()}</p>
+                    )}
+                    {data.conference && (
+                      <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+                        Presented at: {data.conference}
+                      </p>
+                    )}
+                    {data.tags && data.tags.length > 0 && (
+                      <div class="mt-3 flex flex-wrap gap-2">
+                        {data.tags.map((tag) => (
+                          <span class="rounded bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-xs text-neutral-600 dark:text-neutral-400">{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    })}
+  </section>
+</BaseLayout>

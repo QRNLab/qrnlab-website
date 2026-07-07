@@ -1,0 +1,67 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import Avatar from "../../../components/Avatar.astro";
+import { getCollection } from "astro:content";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("team", ({ data }) => data.category === "pi");
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { data, body } = entry;
+const pubs = data.publications || [];
+---
+
+<BaseLayout title={data.name} description={`${data.name} — Principal Investigator, QRNLab`}>
+  <div class="flex items-start gap-6">
+    <Avatar name={data.name} size={96} />
+    <div>
+      <h1 class="text-3xl font-semibold tracking-tight">{data.name}</h1>
+      {data.title && <p class="mt-1 text-neutral-600 dark:text-neutral-400">{data.title}</p>}
+      {data.email && (
+        <p class="mt-1 text-sm">
+          <a href={`mailto:${data.email}`} class="text-neutral-500 dark:text-neutral-400 hover:text-blue-700 dark:hover:text-blue-400 underline transition-colors">{data.email}</a>
+        </p>
+      )}
+    </div>
+  </div>
+
+  <div class="mt-6 flex flex-wrap gap-4">
+    {data.scholar && (
+      <a href={data.scholar} target="_blank" rel="noopener noreferrer" class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-blue-700 dark:hover:text-blue-400 transition-colors">
+        Google Scholar
+      </a>
+    )}
+    {data.linkedin && (
+      <a href={data.linkedin} target="_blank" rel="noopener noreferrer" class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-blue-700 dark:hover:text-blue-400 transition-colors">
+        LinkedIn
+      </a>
+    )}
+  </div>
+
+  {body && (
+    <section class="mt-8">
+      <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">Biography</h2>
+      <div class="mt-4 text-neutral-700 dark:text-neutral-300 leading-relaxed max-w-3xl space-y-4">
+        {body.split("\n\n").filter(Boolean).map((p) => (
+          <p>{p.trim()}</p>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {pubs.length > 0 && (
+    <section class="mt-12">
+      <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">Publications</h2>
+      <ul class="mt-4 space-y-3 max-w-3xl">
+        {pubs.map((pub) => (
+          <li class="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">{pub}</li>
+        ))}
+      </ul>
+    </section>
+  )}
+</BaseLayout>

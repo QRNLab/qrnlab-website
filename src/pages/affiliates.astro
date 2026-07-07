@@ -1,0 +1,150 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Avatar from "../components/Avatar.astro";
+
+const groupPhotos = [
+  "/images/affiliates/Group Affil.jpg",
+  "/images/affiliates/group Affil 2.jpg",
+  "/images/affiliates/beach Affil.jpg",
+];
+
+const affiliates = [
+  {
+    name: "Prof. Nakahiro Yasuda",
+    title: "Professor",
+    institution: "Research Institute of Nuclear Engineering (RINE), University of Fukui, Japan",
+    links: [
+      { label: "ResearchGate", url: "https://www.researchgate.net/profile/Nakahiro-Yasuda-2" },
+      { label: "Google Scholar", url: "https://scholar.google.com/citations?user=j7rUgKcAAAAJ" },
+    ],
+    bio: "Prof. Nakahiro Yasuda is a researcher in radiological sciences at the Research Institute of Nuclear Engineering (RINE), University of Fukui. His expertise includes heavy ion radiation biology, CR-39 nuclear track detectors, and space radiation dosimetry. He was the PhD supervisor of Prof. Quazi Muhammad Rashed Nizam at the University of Fukui, and they continue to collaborate on radiation measurement and environmental radioactivity research.",
+    photos: ["/images/affiliates/Nakahiro QRN.jpg"],
+    publications: [
+      "An overview of background radiation level and spatial distribution of NORM in Bangladesh. Journal of Radiological Protection, 46, 011002, 2026.",
+    ],
+  },
+  {
+    name: "Prof. Lembit Sihver",
+    title: "Professor",
+    institution: "Atominstitut, TU Wien, Austria / University of Texas Rio Grande Valley, USA",
+    links: [
+      { label: "ResearchGate", url: "https://www.researchgate.net/profile/Lembit-Sihver" },
+      { label: "Google Scholar", url: "https://scholar.google.com/citations?user=QNu2BHgAAAAJ" },
+    ],
+    bio: "Prof. Lembit Sihver is an expert in Monte Carlo simulations of radiation transport, heavy ion interactions, space radiation shielding, and radiation dosimetry. He is a core developer of the PHITS code and has extensive experience in radiation protection for astronauts and heavy ion cancer therapy. He has collaborated with QRNLab on Monte Carlo calculations for heavy ion therapy applications.",
+    photos: ["/images/affiliates/Prof. L. Sihver.jpg"],
+    publications: [
+      "Monte Carlo calculations of target fragments from helium and carbon ion interactions with water. Zeitschrift fur Medizinische Physik, 36(1), 26-35, 2026.",
+    ],
+  },
+  {
+    name: "Prof. Mayeen Uddin Khandaker",
+    title: "Professor",
+    institution: "Applied Physics and Radiation Technologies Group, Sunway University, Malaysia",
+    links: [
+      { label: "Sunway Profile", url: "https://sunwayuniversity.edu.my/research-centre-carbon-dioxide-capture-utilisation/staff-profiles/professor-mayeen-uddin-khandaker" },
+      { label: "Google Scholar", url: "https://scholar.google.com/citations?user=Xk8wGTgAAAAJ" },
+      { label: "ResearchGate", url: "https://www.researchgate.net/profile/Mayeen-Khandaker" },
+      { label: "ORCID", url: "https://orcid.org/0000-0003-3772-294X" },
+    ],
+    bio: "Prof. Mayeen Uddin Khandaker, Ph.D. (Korea), is a Professor of Applied Physics and Radiation Technologies at Sunway University, Malaysia. He has published over 565 research papers with a total citation of over 10,000, and is listed among the top 2% highly cited researchers by Elsevier-Stanford University. His research interests include medical physics, radiation shielding, environmental radioactivity, and nuclear energy. He maintains ongoing collaborative research with QRNLab in the fields of radiation physics and environmental radioactivity assessment.",
+    photos: ["/images/affiliates/mayeen_uddin_khandaker.jpg"],
+    publications: [],
+  },
+  {
+    name: "Md. Abdullah Al Zaman",
+    title: "Senior Lecturer (Study Leave)",
+    institution: "Department of Textile Engineering, Northern University Bangladesh",
+    links: [
+      { label: "NUB Profile", url: "https://nub.ac.bd/pims/faculty-member/rrauqiwz/md.-abdullah-al-zaman" },
+      { label: "Google Scholar", url: "https://scholar.google.com/citations?user=ZsWJDS0AAAAJ" },
+    ],
+    bio: "Md. Abdullah Al Zaman is a Senior Lecturer at Northern University Bangladesh, currently pursuing a Ph.D. at the University of Kansas, USA. His research interests include space radiation shielding, superconductivity, and astrophysics. He has collaborated with Prof. Nizam on multiple studies investigating radiation shielding materials for long-term space missions.",
+    photos: [],
+    publications: [
+      "Study on Shielding Effectiveness of a Combined Radiation Shield for Manned Long Termed Interplanetary Expeditions. Journal of Space Safety Engineering, 2022.",
+      "Study on Effectiveness of Polyimide and Polyester Polymer for Radiation Shielding in a Spacecraft for Long Termed Space Mission. International Conference on Physics, 2022.",
+      "Study on the effectiveness of Kevlar and Polyethylene for radiation shielding in a spacecraft for long term space missions. 4th ICPSDT, 2022.",
+    ],
+  },
+];
+---
+
+<BaseLayout title="Affiliates" description="QRNLab affiliate researchers and collaborators">
+  <h1 class="text-3xl font-semibold tracking-tight">Affiliates</h1>
+  <p class="mt-3 text-neutral-600 dark:text-neutral-400 max-w-3xl">
+    QRNLab collaborates with researchers and institutions worldwide. Our affiliates contribute to a broad range of research in nuclear physics, radiation science, and quantum technologies.
+  </p>
+
+  {affiliates.map((aff, idx) => (
+    <section class="mt-16">
+      <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">
+        {aff.name}
+      </h2>
+      <p class="mt-1 text-neutral-600 dark:text-neutral-400">{aff.title}</p>
+      <p class="text-sm text-neutral-500 dark:text-neutral-400">{aff.institution}</p>
+
+      {aff.links.length > 0 && (
+        <ul class="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+          {aff.links.map((link) => (
+            <li>
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
+              >
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div class="mt-5 flex flex-wrap items-start gap-3 sm:gap-4">
+        {aff.photos.length > 0 ? (
+          aff.photos.map((src) => (
+            <img
+              src={src}
+              alt={`${aff.name}`}
+              class="h-24 w-24 sm:h-40 sm:w-40 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700"
+            />
+          ))
+        ) : (
+          <div class="shrink-0">
+            <Avatar name={aff.name} size={96} />
+          </div>
+        )}
+
+        {groupPhotos.map((src) => (
+          <img
+            src={src}
+            alt="QRNLab collaboration"
+            class="h-24 w-32 sm:h-40 sm:w-56 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700"
+          />
+        ))}
+      </div>
+
+      <p class="mt-5 text-neutral-700 dark:text-neutral-300 leading-relaxed max-w-3xl">{aff.bio}</p>
+
+      {aff.publications.length > 0 && (
+        <div class="mt-6">
+          <h3 class="text-lg font-medium text-neutral-900 dark:text-neutral-100">Research in Affiliation with QRNLab</h3>
+          <ul class="mt-2 space-y-2 max-w-3xl">
+            {aff.publications.map((pub) => (
+              <li class="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed pl-4 border-l-2 border-blue-500/40">
+                {pub}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {aff.publications.length === 0 && (
+        <p class="mt-4 text-sm text-neutral-500 italic max-w-3xl">
+          Ongoing collaborative research in radiation physics and environmental radioactivity.
+        </p>
+      )}
+    </section>
+  ))}
+</BaseLayout>
