@@ -62,7 +62,7 @@ const pubs = data.publications || [];
       <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">About</h2>
       <div class="mt-4 text-neutral-700 dark:text-neutral-300 leading-relaxed max-w-3xl space-y-4">
         {body.split("\n\n").filter(Boolean).map((p) => (
-          <p>{p.trim()}</p>
+          <p class="whitespace-pre-line">{p.trim()}</p>
         ))}
       </div>
     </section>

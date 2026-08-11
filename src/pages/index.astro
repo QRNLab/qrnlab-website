@@ -1,5 +1,10 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
+
+const posts = (await getCollection("blog"))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 3);
 ---
 
 <BaseLayout title="Home" description="QRNLab — Bridging Nuclear, Quantum, and Astrophysical Frontiers through Research and Innovation">
@@ -23,7 +28,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     <a href="/team" class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-6 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
       <h2 class="text-lg font-medium text-neutral-900 dark:text-neutral-100">Team</h2>
       <p class="mt-1.5 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
-        Meet our principal investigator, current members, and alumni.
+        Meet our principal investigator, current members, and alumni. Members can register through self-registration.
       </p>
     </a>
     <a href="/publications" class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-6 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
@@ -42,6 +47,22 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   <section class="mt-16">
     <h2 class="text-xl font-semibold tracking-tight">Latest Updates</h2>
-    <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400 italic">No updates yet.</p>
+    {posts.length === 0 ? (
+      <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400 italic">No updates yet.</p>
+    ) : (
+      <ul class="mt-4 space-y-4">
+        {posts.map((post) => (
+          <li>
+            <a href={`/blog/${post.id}`} class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
+              <p class="text-xs text-neutral-500 dark:text-neutral-400">{post.data.date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</p>
+              <h3 class="mt-1 font-medium text-neutral-900 dark:text-neutral-100">{post.data.title}</h3>
+              {post.data.excerpt && (
+                <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{post.data.excerpt}</p>
+              )}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
   </section>
 </BaseLayout>

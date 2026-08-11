@@ -1,0 +1,232 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+---
+
+<BaseLayout title="Blog editor" description="Write and publish blog posts">
+  <div class="flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold tracking-tight">Blog editor</h1>
+      <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Posts are stored as Markdown with KaTeX math ($...$). Publishing syncs them into the site.</p>
+    </div>
+    <button id="new-post" class="shrink-0 rounded bg-[#0b0d39] dark:bg-[#f4f2c7] px-4 py-2 text-sm font-medium text-white dark:text-[#0b0d39] hover:opacity-90 transition-opacity">New post</button>
+  </div>
+
+  <div id="list" class="mt-8 space-y-3"></div>
+
+  <section id="editor" class="mt-10 hidden">
+    <h2 id="editor-title" class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">New post</h2>
+
+    <form id="post-form" class="mt-6 space-y-4">
+      <input type="hidden" id="post-id" />
+      <div>
+        <label for="title" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Title</label>
+        <input id="title" type="text" required
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none" />
+      </div>
+      <div>
+        <label for="excerpt" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Excerpt</label>
+        <input id="excerpt" type="text"
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none" />
+      </div>
+      <div>
+        <label for="tags" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Tags <span class="font-normal text-neutral-400 dark:text-neutral-500">(comma separated)</span></label>
+        <input id="tags" type="text"
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none" />
+      </div>
+      <div>
+        <label for="body" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Body (Markdown + KaTeX)</label>
+        <textarea id="body" rows={14} required
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 font-mono text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none"></textarea>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button type="button" id="preview-toggle" class="rounded border border-neutral-300 dark:border-neutral-600 px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Preview</button>
+        <button type="submit" class="rounded bg-[#0b0d39] dark:bg-[#f4f2c7] px-4 py-2 text-sm font-medium text-white dark:text-[#0b0d39] hover:opacity-90 transition-opacity">Save draft</button>
+        <button type="button" id="publish-btn" class="rounded bg-green-700 dark:bg-green-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity">Publish</button>
+        <button type="button" id="cancel-btn" class="rounded border border-neutral-300 dark:border-neutral-600 px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+      </div>
+
+      <p id="error" class="hidden text-sm text-red-600 dark:text-red-400"></p>
+      <p id="done" class="hidden text-sm text-green-700 dark:text-green-400"></p>
+    </form>
+
+    <div id="preview" class="mt-6 hidden rounded-lg border border-neutral-200 dark:border-neutral-700 p-6"></div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { api } from "../../lib/client/api";
+  import katex from "katex";
+  import { marked } from "marked";
+
+  function renderMath(src: string): string {
+    return src
+      .replace(/\$\$([\s\S]+?)\$\$/g, (_, tex: string) =>
+        katex.renderToString(tex, { displayMode: true, throwOnError: false }),
+      )
+      .replace(/\$([^$\n]+?)\$/g, (_, tex: string) =>
+        katex.renderToString(tex, { displayMode: false, throwOnError: false }),
+      );
+  }
+
+  function renderPreview(md: string): string {
+    const html = marked.parse(renderMath(md), { async: false }) as string;
+    return `<div class="prose">${html}</div>`;
+  }
+
+  const listEl = document.getElementById("list")!;
+  const editorEl = document.getElementById("editor")!;
+  const editorTitle = document.getElementById("editor-title")!;
+  const form = document.getElementById("post-form") as HTMLFormElement;
+  const idInput = document.getElementById("post-id") as HTMLInputElement;
+  const titleInput = document.getElementById("title") as HTMLInputElement;
+  const excerptInput = document.getElementById("excerpt") as HTMLInputElement;
+  const tagsInput = document.getElementById("tags") as HTMLInputElement;
+  const bodyInput = document.getElementById("body") as HTMLTextAreaElement;
+  const errorEl = document.getElementById("error")!;
+  const doneEl = document.getElementById("done")!;
+  const previewEl = document.getElementById("preview")!;
+
+  let posts: any[] = [];
+  let editingId: string | null = null;
+
+  async function load() {
+    const data = await api<{ posts: any[] }>("/content/blog");
+    posts = data.posts ?? [];
+    renderList();
+  }
+
+  function renderList() {
+    listEl.innerHTML = "";
+    if (posts.length === 0) {
+      listEl.innerHTML = '<p class="text-sm text-neutral-500 dark:text-neutral-400 italic">No posts yet. Write your first post!</p>';
+      return;
+    }
+    for (const post of posts) {
+      const row = document.createElement("div");
+      row.className = "flex items-center justify-between gap-4 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4";
+      const info = document.createElement("div");
+      info.innerHTML = `
+        <p class="font-medium text-neutral-900 dark:text-neutral-100"></p>
+        <p class="text-xs text-neutral-500 dark:text-neutral-400"></p>`;
+      info.querySelector("p")!.textContent = post.title;
+      const meta = info.querySelectorAll("p")[1];
+      meta.textContent = `${post.status} · ${new Date(post.updatedAt).toLocaleString()} · by ${post.authorName ?? "unknown"}`;
+      const actions = document.createElement("div");
+      actions.className = "flex gap-2";
+      const editBtn = document.createElement("button");
+      editBtn.className = "rounded border border-neutral-300 dark:border-neutral-600 px-3 py-1 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => openEdit(post));
+      actions.appendChild(editBtn);
+      const pubBtn = document.createElement("button");
+      pubBtn.className = "rounded bg-green-700 dark:bg-green-600 px-3 py-1 text-xs text-white hover:opacity-90 transition-opacity";
+      pubBtn.textContent = post.status === "published" ? "Republish" : "Publish";
+      pubBtn.addEventListener("click", () => publish(post.id));
+      actions.appendChild(pubBtn);
+      row.appendChild(info);
+      row.appendChild(actions);
+      listEl.appendChild(row);
+    }
+  }
+
+  function openNew() {
+    editingId = null;
+    idInput.value = "";
+    titleInput.value = "";
+    excerptInput.value = "";
+    tagsInput.value = "";
+    bodyInput.value = "";
+    errorEl.classList.add("hidden");
+    doneEl.classList.add("hidden");
+    previewEl.classList.add("hidden");
+    editorTitle.textContent = "New post";
+    editorEl.classList.remove("hidden");
+    bodyInput.focus();
+  }
+
+  function openEdit(post: any) {
+    editingId = post.id;
+    idInput.value = post.id;
+    titleInput.value = post.title;
+    excerptInput.value = post.excerpt ?? "";
+    tagsInput.value = (post.tags ?? []).join(", ");
+    bodyInput.value = post.body;
+    errorEl.classList.add("hidden");
+    doneEl.classList.add("hidden");
+    previewEl.classList.add("hidden");
+    editorTitle.textContent = `Edit: ${post.title}`;
+    editorEl.classList.remove("hidden");
+  }
+
+  async function save() {
+    errorEl.classList.add("hidden");
+    doneEl.classList.add("hidden");
+    const payload = {
+      title: titleInput.value,
+      excerpt: excerptInput.value || undefined,
+      body: bodyInput.value,
+      tags: tagsInput.value.split(",").map((s) => s.trim()).filter(Boolean),
+    };
+    if (editingId) {
+      await api(`/content/blog/${editingId}`, { method: "PUT", body: JSON.stringify(payload) });
+    } else {
+      const data = await api<{ id: string }>("/content/blog", { method: "POST", body: JSON.stringify(payload) });
+      editingId = data.id;
+      idInput.value = data.id;
+    }
+    doneEl.textContent = "Draft saved.";
+    doneEl.classList.remove("hidden");
+    await load();
+  }
+
+  async function publish(id: string) {
+    errorEl.classList.add("hidden");
+    doneEl.classList.add("hidden");
+    try {
+      const data = await api<{ url: string }>(`/content/blog/${id}/publish`, { method: "POST" });
+      doneEl.textContent = `Published — ${data.url ?? "see the PR on GitHub"}`;
+      doneEl.classList.remove("hidden");
+      await load();
+    } catch (err: any) {
+      errorEl.textContent = err.message ?? "Publish failed.";
+      errorEl.classList.remove("hidden");
+    }
+  }
+
+  document.getElementById("new-post")!.addEventListener("click", openNew);
+  document.getElementById("cancel-btn")!.addEventListener("click", () => {
+    editorEl.classList.add("hidden");
+  });
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    save();
+  });
+  document.getElementById("publish-btn")!.addEventListener("click", async () => {
+    if (!editingId) {
+      await save();
+    }
+    if (editingId) await publish(editingId);
+  });
+
+  const previewToggle = document.getElementById("preview-toggle")!;
+  previewToggle.addEventListener("click", () => {
+    previewEl.classList.toggle("hidden");
+    if (!previewEl.classList.contains("hidden")) {
+      previewEl.innerHTML = renderPreview(bodyInput.value);
+    }
+  });
+
+  let previewTimer: ReturnType<typeof setTimeout>;
+  bodyInput.addEventListener("input", () => {
+    if (previewEl.classList.contains("hidden")) return;
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => {
+      previewEl.innerHTML = renderPreview(bodyInput.value);
+    }, 250);
+  });
+
+  load();
+</script>

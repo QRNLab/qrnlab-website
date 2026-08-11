@@ -1,0 +1,88 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Login" description="Sign in to your QRNLab account">
+  <div class="mx-auto max-w-md">
+    <h1 class="text-3xl font-semibold tracking-tight">Login</h1>
+    <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+      Sign in to manage your profile or publish content.
+    </p>
+
+    <form id="login-form" class="mt-8 space-y-4" novalidate>
+      <div>
+        <label for="email" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Email</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          required
+          autocomplete="email"
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none"
+        />
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          required
+          autocomplete="current-password"
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none"
+        />
+      </div>
+
+      <p id="error" class="hidden text-sm text-red-600 dark:text-red-400"></p>
+      <p id="notice" class="hidden text-sm text-amber-600 dark:text-amber-400"></p>
+
+      <button
+        type="submit"
+        class="w-full rounded bg-[#0b0d39] dark:bg-[#f4f2c7] px-4 py-2 text-sm font-medium text-white dark:text-[#0b0d39] hover:opacity-90 transition-opacity"
+      >
+        Sign in
+      </button>
+    </form>
+
+    <p class="mt-6 text-sm text-neutral-500 dark:text-neutral-400">
+      Not a member yet? <a href="/join" class="text-blue-700 dark:text-blue-400 hover:underline">Register</a>
+    </p>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById("login-form") as HTMLFormElement;
+  const errorEl = document.getElementById("error")!;
+  const noticeEl = document.getElementById("notice")!;
+  const redirectTo = new URLSearchParams(location.search).get("redirect") ?? "/account";
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorEl.classList.add("hidden");
+    noticeEl.classList.add("hidden");
+    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+    const password = (form.elements.namedItem("password") as HTMLInputElement).value;
+
+    const res = await fetch("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (res.ok) {
+      location.href = redirectTo;
+      return;
+    }
+
+    let message = "Sign-in failed. Check your credentials.";
+    const data = await res.json().catch(() => null);
+    if (data?.message) message = data.message;
+    if (data?.error === "EMAIL_NOT_VERIFIED") {
+      noticeEl.textContent = "Your email is not verified yet. Check your inbox for the verification link.";
+      noticeEl.classList.remove("hidden");
+      return;
+    }
+    errorEl.textContent = message;
+    errorEl.classList.remove("hidden");
+  });
+</script>

@@ -21,10 +21,14 @@ const pubs = data.publications || [];
     <Avatar name={data.name} size={96} />
     <div>
       <h1 class="text-3xl font-semibold tracking-tight">{data.name}</h1>
-      <p class="mt-2 text-lg font-medium text-amber-600 dark:text-amber-400">
-        {data.currentPosition} at {data.currentInstitution}
-      </p>
-      <p class="text-sm text-neutral-500 dark:text-neutral-400">Graduated {data.yearGraduated}</p>
+      {(data.currentPosition || data.currentInstitution) && (
+        <p class="mt-2 text-lg font-medium text-amber-600 dark:text-amber-400">
+          {[data.currentPosition, data.currentInstitution].filter(Boolean).join(" at ")}
+        </p>
+      )}
+      {data.yearGraduated && (
+        <p class="text-sm text-neutral-500 dark:text-neutral-400">Graduated {data.yearGraduated}</p>
+      )}
       {data.email && (
         <p class="mt-1 text-sm">
           <a href={`mailto:${data.email}`} class="text-neutral-500 dark:text-neutral-400 hover:text-blue-700 dark:hover:text-blue-400 underline transition-colors">{data.email}</a>
@@ -65,7 +69,7 @@ const pubs = data.publications || [];
       <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">About</h2>
       <div class="mt-4 text-neutral-700 dark:text-neutral-300 leading-relaxed max-w-3xl space-y-4">
         {body.split("\n\n").filter(Boolean).map((p) => (
-          <p>{p.trim()}</p>
+          <p class="whitespace-pre-line">{p.trim()}</p>
         ))}
       </div>
     </section>

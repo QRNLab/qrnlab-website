@@ -1,0 +1,106 @@
+---
+export interface Props {
+  name?: string;
+  value?: string;
+}
+
+const { name = "role", value } = Astro.props;
+
+const roleOptions: { title: string; hint: string }[] = [
+  {
+    title: "Graduate Research Assistant",
+    hint: "For graduated M.S. thesis students (both old and new) who have received explicit approval from the Principal Investigator (QRN Sir).",
+  },
+  {
+    title: "M.S. Thesis Student",
+    hint: "For graduated M.S. thesis students who have not yet received explicit approval from the Principal Investigator for the Graduate Research Assistant role.",
+  },
+  {
+    title: "Undergraduate Research Assistant",
+    hint: "For 3rd and 4th-year undergraduate students who have received explicit approval from the Principal Investigator.",
+  },
+  {
+    title: "Student Researcher",
+    hint: "For 3rd and 4th-year undergraduate students who have not yet received explicit approval from the Principal Investigator for the Assistant role.",
+  },
+  {
+    title: "Research Intern",
+    hint: "For students who are just starting out and have actively worked with us for at least 3 months.",
+  },
+];
+
+const hasValue = roleOptions.some((o) => o.title === value);
+const options = hasValue ? roleOptions : [{ title: value ?? "", hint: "Current role" }, ...roleOptions];
+const selected = options.find((o) => o.title === value) ?? null;
+---
+
+<div class="relative" data-roleselect>
+  <input type="hidden" name={name} value={value ?? ""} />
+  <button
+    type="button"
+    data-toggle
+    class="mt-1 flex w-full items-center justify-between gap-2 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-left text-sm text-neutral-900 dark:text-neutral-100 hover:border-neutral-400 dark:hover:border-neutral-500 focus:border-blue-500 focus:outline-none"
+  >
+    <span data-label class={selected ? "" : "text-neutral-400 dark:text-neutral-500"}>
+      {selected?.title ?? "Select a role"}
+    </span>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-400" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
+
+  <ul
+    data-menu
+    class="absolute left-0 right-0 top-full z-20 mt-1 hidden max-h-72 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-1 shadow-lg"
+  >
+    {options.map((o) => (
+      <li>
+        <button
+          type="button"
+          data-option={o.title}
+          class="w-full rounded-md px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700"
+        >
+          <span class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">{o.title}</span>
+          <span class="mt-0.5 block text-xs leading-snug text-neutral-500 dark:text-neutral-400">{o.hint}</span>
+        </button>
+      </li>
+    ))}
+  </ul>
+</div>
+
+<script>
+  const root = document.querySelector<HTMLElement>("[data-roleselect]");
+  if (root) {
+    const input = root.querySelector<HTMLInputElement>("input[type='hidden']")!;
+    const toggle = root.querySelector<HTMLButtonElement>("[data-toggle]")!;
+    const menu = root.querySelector<HTMLElement>("[data-menu]")!;
+    const label = root.querySelector<HTMLElement>("[data-label]")!;
+
+    function open() {
+      menu.classList.remove("hidden");
+      toggle.setAttribute("aria-expanded", "true");
+    }
+    function close() {
+      menu.classList.add("hidden");
+      toggle.removeAttribute("aria-expanded");
+    }
+    function select(title: string) {
+      input.value = title;
+      label.textContent = title;
+      label.classList.remove("text-neutral-400", "dark:text-neutral-500");
+      close();
+    }
+
+    toggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menu.classList.contains("hidden") ? open() : close();
+    });
+    root.querySelectorAll<HTMLButtonElement>("[data-option]").forEach((opt) => {
+      opt.addEventListener("click", () => select(opt.dataset.option ?? ""));
+    });
+    document.addEventListener("click", (e) => {
+      if (!root.contains(e.target as Node)) close();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+    });
+  }
+</script>

@@ -1,0 +1,179 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { eq } from "drizzle-orm";
+import { getDb } from "../../lib/server/db";
+import { memberProfiles, users } from "../../lib/server/schema";
+
+export const prerender = false;
+
+const db = await getDb();
+const profiles = await db.select().from(memberProfiles).orderBy(memberProfiles.updatedAt);
+const pending = profiles.filter((p) => p.status === "pending");
+const userList = await db
+  .select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    emailVerified: users.emailVerified,
+    category: memberProfiles.category,
+    status: memberProfiles.status,
+  })
+  .from(users)
+  .leftJoin(memberProfiles, eq(memberProfiles.userId, users.id));
+---
+
+<BaseLayout title="Admin" description="QRNLab admin dashboard">
+  <h1 class="text-3xl font-semibold tracking-tight">Admin</h1>
+
+  <div class="mt-4 flex flex-wrap gap-3 text-sm">
+    <a href="/admin/blog" class="rounded border border-neutral-300 dark:border-neutral-600 px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Blog editor</a>
+    <a href="/admin/publications" class="rounded border border-neutral-300 dark:border-neutral-600 px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Publications</a>
+    <a href="/admin/review" class="rounded border border-neutral-300 dark:border-neutral-600 px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Review submissions</a>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">
+      Member profile approvals
+    </h2>
+    {pending.length === 0 ? (
+      <p class="mt-4 text-sm text-neutral-500 dark:text-neutral-400 italic">No profiles awaiting approval.</p>
+    ) : (
+      <ul class="mt-4 space-y-4">
+        {pending.map((p) => (
+          <li class="rounded-lg border border-neutral-200 dark:border-neutral-700 p-5" data-profile={p.userId}>
+            <h3 class="font-medium text-neutral-900 dark:text-neutral-100">{p.name}</h3>
+            <p class="text-sm text-neutral-500 dark:text-neutral-400">
+              {p.role || "No role"} · {p.focus || "No focus"}
+              {p.email && <> · <a class="text-blue-700 dark:text-blue-400 hover:underline" href={`mailto:${p.email}`}>{p.email}</a></>}
+            </p>
+            {p.bio && (
+              <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400 whitespace-pre-line line-clamp-4">{p.bio}</p>
+            )}
+            {(p.links ?? []).length > 0 && (
+              <p class="mt-2 text-xs text-neutral-400 dark:text-neutral-500">
+                Links: {(p.links ?? []).map((l) => `${l.label} (${l.url})`).join(" · ")}
+              </p>
+            )}
+            <div class="mt-3 flex gap-2">
+              <button data-action="approve" class="rounded bg-green-700 dark:bg-green-600 px-4 py-1.5 text-sm text-white hover:opacity-90 transition-opacity">Approve</button>
+              <button data-action="reject" class="rounded border border-neutral-300 dark:border-neutral-600 px-4 py-1.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Reject</button>
+            </div>
+            <p class="mt-2 hidden text-sm text-green-700 dark:text-green-400" data-result></p>
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+
+  <section class="mt-12">
+    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">
+      Users &amp; roles
+    </h2>
+    <div class="mt-4 overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-700">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-neutral-50 dark:bg-neutral-800/50">
+          <tr class="text-neutral-500 dark:text-neutral-400">
+            <th class="px-4 py-2 font-medium">Name</th>
+            <th class="px-4 py-2 font-medium">Email</th>
+            <th class="px-4 py-2 font-medium">Verified</th>
+            <th class="px-4 py-2 font-medium">Access role</th>
+            <th class="px-4 py-2 font-medium">Team category</th>
+          </tr>
+        </thead>
+        <tbody>
+          {userList.map((u) => (
+            <tr class="border-t border-neutral-200 dark:border-neutral-700">
+              <td class="px-4 py-2 text-neutral-900 dark:text-neutral-100">{u.name}</td>
+              <td class="px-4 py-2 text-neutral-500 dark:text-neutral-400">{u.email}</td>
+              <td class="px-4 py-2 text-neutral-500 dark:text-neutral-400">{u.emailVerified ? "Yes" : "No"}</td>
+              <td class="px-4 py-2">
+                <div class="relative inline-block">
+                  <select data-user={u.id} class="role-select appearance-none rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 py-1.5 pl-2.5 pr-7 text-sm text-neutral-900 dark:text-neutral-100 hover:border-neutral-400 dark:hover:border-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="member" selected={u.role === "member"}>member</option>
+                    <option value="editor" selected={u.role === "editor"}>editor</option>
+                    <option value="admin" selected={u.role === "admin"}>admin</option>
+                  </select>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </td>
+              <td class="px-4 py-2">
+                <div class="relative inline-block">
+                  <select data-user={u.id} class="category-select appearance-none rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 py-1.5 pl-2.5 pr-7 text-sm text-neutral-900 dark:text-neutral-100 hover:border-neutral-400 dark:hover:border-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="member" selected={u.category !== "alumni"}>member</option>
+                    <option value="alumni" selected={u.category === "alumni"}>alumni</option>
+                  </select>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-profile]").forEach((card) => {
+    const userId = card.dataset.profile!;
+    const resultEl = card.querySelector<HTMLElement>("[data-result]")!;
+    card.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const action = btn.dataset.action!;
+        btn.disabled = true;
+        const res = await fetch(`/api/admin/members/${userId}/${action}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok) {
+          resultEl.textContent = action === "approve" && data?.url
+            ? `Approved. Pull request: ${data.url}`
+            : action === "approve"
+              ? "Approved."
+              : "Rejected.";
+          resultEl.classList.remove("hidden");
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          resultEl.textContent = data?.error ?? "Failed.";
+          resultEl.classList.add("text-red-600", "dark:text-red-400");
+          resultEl.classList.remove("hidden");
+          btn.disabled = false;
+        }
+      });
+    });
+  });
+
+  document.querySelectorAll<HTMLSelectElement>(".role-select").forEach((select) => {
+    select.addEventListener("change", async () => {
+      const userId = select.dataset.user!;
+      const res = await fetch(`/api/admin/users/${userId}/role`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: select.value }),
+      });
+      if (!res.ok) {
+        alert("Could not update role.");
+        location.reload();
+      }
+    });
+  });
+
+  document.querySelectorAll<HTMLSelectElement>(".category-select").forEach((select) => {
+    select.addEventListener("change", async () => {
+      const userId = select.dataset.user!;
+      const res = await fetch(`/api/admin/users/${userId}/category`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: select.value }),
+      });
+      if (!res.ok) {
+        alert("Could not update category.");
+        location.reload();
+      } else {
+        location.reload();
+      }
+    });
+  });
+</script>

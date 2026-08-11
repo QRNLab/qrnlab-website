@@ -2,6 +2,146 @@
 
 ## Session Log
 
+### Session 15 — 2026-08-03
+
+**Goal**: Replace instruction text with structured, JS-driven editors for adding publications.
+
+**Implemented**:
+- **Member profile publications** (`/account/edit`): replaced the free-text textarea + long example with a structured editor. Each entry is a row in one of two modes:
+  - *Structured* (added via "Add publication"): fields for Authors, Title, Venue, Year with a **live citation preview** that builds `Authors. "Title." Venue, Year.` as you type.
+  - *Raw* (existing/legacy publications prefill here): a single "paste a full citation" textarea.
+  - Rows can be removed; on save the rows serialize to the `publications` string array (same schema/render as before).
+- **Lab publications editor** (`/admin/publications`): replaced the "How to add a publication" instructions panel with structured inputs — **Authors as a dynamic add/remove list** (one input per author) plus a **live citation preview** panel that updates as you type. Payload unchanged (authors joined with ", ").
+- Both editors use small inline JS and Tailwind-styled markup.
+
+**Verified**: `pnpm check` clean, `pnpm build` passes. Both pages render the new editors (author list + preview on admin; publications editor + "Add publication" on `/account/edit`), the old free-text textarea and instructions panel are gone.
+
+**Note**: the intermittent admin sign-in 401 in local dev appears to be a transient cold-start race; the e2e script retries sign-in and it consistently succeeds on retry.
+
+---
+
+### Session 14 — 2026-08-03
+
+**Goal**: Split the profile page into View + Edit, role dropdown with hint subtitles, a publications section on the profile, and Tailwind UI polish.
+
+**Implemented**:
+- **Profile split**: `/account` is now a **view-only page** showing the *latest published* info (from the `team` content collection via the member's stored slug — i.e. exactly what's live on the site) with status-aware notices and an "Edit profile" button. `/account/edit` is the **edit page**, prefilled from the latest submission; saving (`POST /members`) redirects back to `/account`, which then shows the published info + "awaiting review" notice.
+- **Role dropdown**: new `src/components/RoleSelect.astro` — a custom dropdown where each entry shows the role name plus its hint as a subtitle (Tailwind-styled, outside-click/Escape to close, hidden `input[name="role"]`). Five roles: Graduate Research Assistant, M.S. Thesis Student, Undergraduate Research Assistant, Student Researcher, Research Intern, with the exact hints provided. A legacy value not in the list is preserved as an extra option.
+- **Publications on profile**: added a Publications textarea (one per line) to the edit page, saved as an array and rendered on the member/view pages. Confirmed **separate** from the lab's `/publications` collection (no linking).
+- **UI polish**: member/alumni radio replaced with two selectable card-style options (`peer`/`sr-only` + `peer-checked:`) on the edit page; admin `Access role`/`Team category` selects restyled (`appearance-none`, chevron icon, focus ring, dark mode).
+
+**Verified**: `pnpm check` clean, `pnpm build` passes. End-to-end: register → `/account` shows "not published yet" → `/account/edit` renders all 5 role options + role dropdown + publications + radio cards → submit (role, publications, multiline bio) → `/account` shows pending notice → approve → generated markdown has role + publications + bio → `/account` shows live info + public-profile link + published publications.
+
+**Notes**: An intermittent admin sign-in 401 was observed once during testing (transient cold-start race after a fresh PGlite init); 3/3 clean runs pass and it's not reproducible. Leftover local test content files remain in `src/content/team/` (e.g. `asdfasdfa.md`, `the-admin.md`, etc.) — safe to delete.
+
+---
+
+### Session 13 — 2026-08-03
+
+**Goal**: Auto sign-in after registering, rename "Join" → "Register", fix profile fields not showing, bio multiline, and a full-history admin review page.
+
+**Implemented**:
+- **Auto sign-in after registering**: `/join` now attempts `sign-in/email` with the same credentials right after a successful sign-up and redirects to `/account` on success. Works in dev (`DEV_AUTO_VERIFY` completes inside signup); in production it falls back to the "verify your email" message and `autoSignInAfterVerification` signs the user in after they click the link.
+- **"Register" naming**: `/join` title/h1, `/login` link, footer links (server-rendered + client script), and the home page copy now say "Register".
+- **Profile fields not showing — root cause**: `<textarea value={...}>` is ignored by browsers. Fixed the bio and links textareas in `account.astro` to put the content between the tags (`>{p?.bio ?? ""}</textarea>`). The data was always stored; only the prefill display was broken.
+- **Bio multiline**: added `whitespace-pre-line` to the bio paragraphs on the pi/member/alumni detail pages so single line breaks render (blank-line → paragraph still works).
+- **Full-history admin review page**:
+  - New `profile_submissions` table (migration `drizzle/0003_*`) storing a JSON snapshot of every submission with `status`/`reviewedAt`/`reviewedBy`.
+  - `POST /members` inserts a submission; approve/reject mark the latest pending submission (`markSubmissionReviewed`).
+  - New `/admin/review` page (admin-only): all submissions newest-first with status badges; pending ones show a field-level **Before → After** diff against the last approved version (or a "new submission" field list when no baseline); non-pending rows show submitted data in a `<details>` block. Linked from `/admin`.
+
+**Verified**: `pnpm check` clean, `pnpm build` passes. End-to-end: register → auto sign-in; profile with multiline bio + link saved and prefilled between textarea tags; detail page renders `whitespace-pre-line` + both paragraphs; two submissions (submit + update) appear on `/admin/review` with a correct diff; approving updates status; DB shows exactly the expected submissions (no duplicates).
+
+**Notes**: Local leftover test content files remain in `src/content/team/` (`admin-test.md`, `member-one.md`, `member-one-2.md`, `md-shihab-khan.md`, `shamsul-alam-mahfuz.md`, `the-admin.md`) — safe to delete.
+
+---
+
+### Session 12 — 2026-08-03
+
+**Goal**: Let members self-identify as member vs alumni, and let admins change someone's category.
+
+**Implemented**:
+- Added `category` (`member`|`alumni`, default `member`) plus `currentPosition`, `currentInstitution`, `yearGraduated` to `member_profiles` (migration `drizzle/0002_*`).
+- `/account` profile form: radio toggle "Are you a member or alumni?"; selecting **alumni** reveals current position / current institution / graduation year. Prefills from the saved profile.
+- Publish pipeline (`publishTeamMember`): writes `category` and (for alumni) the position/institution/year into the markdown frontmatter. The Team page already groups by category, so a flip moves the person between "Current Members" and "Alumni".
+- Admin dashboard: new **Team category** column in the "Users & roles" table (distinct from **Access role**). New `POST /admin/users/:id/category` route: updates the profile, re-publishes immediately (same slug) when the profile is approved, and creates a minimal pending profile if the user has none yet so the choice sticks.
+- Guarded `AlumniCard` and the alumni detail page against missing alumni fields (no more "undefined").
+
+**Verified**: `pnpm check` clean, `pnpm build` passes. End-to-end: alumni submits profile (with alumni fields) → approves → `category: alumni` markdown with position/institution/year; admin flips alumni→member and member→alumni → same file re-published with the new category; team page moves the person between sections; an alumni with no optional fields renders cleanly (name only); `/account` prefills the alumni toggle and fields.
+
+**Notes**: During testing, stale dev servers (from earlier sessions) were left holding port 4321 with the old code and a corrupted `pglite-data`; killed and cleaned up. Local leftover test content files in `src/content/team/` (`admin-test.md`, `member-one.md`, `member-one-2.md`, `md-shihab-khan.md`) are safe to delete.
+
+---
+
+### Session 11 — 2026-08-02
+
+**Goal**: Fix a sign-out 400 and a dev-only `MaxListenersExceededWarning`.
+
+**Fixed**:
+- **Sign-out 400**: the logout fetch sent `Content-Type: application/json` with no body, so Better Auth's `sign-out` returned `400 Invalid JSON in request body`. Fixed by sending an empty JSON body (`body: "{}"`). Verified: `{"success":true}` 200, session cleared.
+- **MaxListenersExceededWarning (`11 close listeners added to [Socket]`)**: dev-only artifact of the `@astrojs/netlify` dev integration (edge-functions deno server) accumulating socket `close` listeners over a long dev session. Benign; production (Neon over HTTP) is unaffected. Mitigation: `process.setMaxListeners(0)` at the top of `astro.config.mjs` (dev/build process only, never the production function). Also cleaned up stale `deno edge-functions-dev` processes left behind by earlier dev-server restarts.
+
+**Verified**: `pnpm check` clean, `pnpm build` passes. Sign-out works with browser-equivalent headers; no warnings during hammering.
+
+---
+
+### Session 10 — 2026-08-02
+
+**Goal**: Fix member profile updates and several UX issues found in testing.
+
+**Fixed**:
+- **Update-in-place for member profiles** — re-approval was creating a new page (`name-2.md`) instead of updating. Added `slug` column to `member_profiles`; `publishTeamMember(profile, existingSlug?)` reuses the slug; approve route derives the slug (stored → `slugify(name)` if the file exists → new) and persists it. Verified: submit → approve → `test-member.md`; update → re-approve → same file updated, no duplicate.
+- **`writeFileViaPr` sha for updates** — GitHub contents PUT now auto-fetches the existing file's sha (via `readFile`) and includes it, so updating existing files (member re-approval, blog "Republish") works on GitHub instead of 422. Local mode unaffected.
+- **URL normalization** — `normalizeUrl()` (prepend `https://` when no scheme) as Zod transforms in `forms.ts` for website/scholar/linkedin/github/links[].url/publication url. Verified bare domains become `https://…` and render as external links.
+- **Auth-aware footer** — `BaseLayout` now fetches `GET /api/auth/get-session`: logged in shows name (→`/account`) + Logout (`POST /api/auth/sign-out`); guest shows Join/Login; "Admin" link only for `role === 'admin'`.
+- **Bio label** — "Biography (Markdown)" → "Biography" with a plain-text hint (detail pages render it as paragraphs, not markdown).
+- **Live blog preview** — `/admin/blog` preview re-renders on input (250ms debounce) while visible.
+- **Live approval status** — `/account` status badge always rendered (hidden when no profile); on successful submit it flips to amber "pending" without a reload.
+- Fixed the admin approve/reject and logout fetches to send `Content-Type: application/json` (Astro's origin-check rejects bare POSTs; curl sends no Origin).
+
+**Verified**: `pnpm check` clean, `pnpm build` passes. End-to-end: register → login → submit profile (bare-domain link) → approve → file created with normalized URLs; update → re-approve → same file updated; `/account` prefills saved data; `get-session`/`sign-out` work (sign-out needs a matching `BETTER_AUTH_URL`/Origin — works on default dev port and production).
+
+**Note**: leftover local test artifacts in `src/content/team/` — `admin-test.md`, `member-one.md`, `member-one-2.md` (the `-2` is a duplicate created by the old bug). Safe to delete.
+
+---
+
+### Session 9 — 2026-08-02
+
+**Goal**: Rebuild the site from the current architecture into a self-service system with unified roles, git-backed publishing, and markdown+KaTeX content.
+
+**Architecture** (agreed in planning):
+- Single GitHub repo → Netlify (auto-build on push to `main`).
+- Astro 7 (static output, on-demand pages via `prerender = false`) + `@astrojs/netlify` adapter.
+- Hono API mounted in an Astro catch-all route (`src/pages/api/[...path].ts`) → all `/api/*` runs in the Netlify function.
+- Better Auth (email+password, email verification via Resend) with sessions in Neon.
+- NeonDB (serverless Postgres) via Drizzle; schema in `src/lib/server/schema.ts`.
+- Content publishing: Hono → GitHub REST API writes markdown → opens a PR → system auto-merges → Netlify rebuilds. No human git interaction.
+- Roles: `member` / `editor` / `admin`, single source of truth (`users.role`), admin-assignable.
+- Math: KaTeX at build time via `@astrojs/markdown-remark` `unified()` processor. **Typst deferred.**
+- **Images deferred** (B2 private-bucket question unresolved; candidates noted: Cloudflare Worker in front of a private bucket vs commit-to-repo). Revisit when image support is added.
+
+**Implemented**:
+- Config: `astro.config.mjs` (netlify adapter, `unified` processor + remark-math/rehype-katex), `drizzle.config.ts`, `tsconfig` (strict), env templates.
+- Design system ported: `BaseLayout` (dark-blue nav, amber active, dark mode, mobile menu), `Avatar`, `global.css` (KaTeX CSS + `.prose` block for blog).
+- Content layer: `src/content.config.ts` (team, blog, publications, projects collections); static pages (`index`, `about`, `research`, `affiliates`, `education`, `team` + detail routes, `publications`, `blog` + `[slug]`). Seeded real content: 4 team members (removed the 15 fake/dummy profiles), 7 publications, 2 blog posts (one demonstrates KaTeX).
+- Backend: Drizzle schema (users/sessions/accounts/verifications + member_profiles/blog_posts/publications), lazy `getDb()`/`getAuth()` (build-safe without env vars), Better Auth instance with `role` additional field and `ADMIN_EMAILS` bootstrap hook, Resend mail, GitHub publish pipeline (`writeFileViaPr`: branch → contents → PR → auto-merge), markdown generation (`src/lib/server/content.ts`).
+- API (`src/api/app.ts`): auth mount, `/members` (submit own profile → pending), `/content/blog` + `/content/publications` (drafts, publish), `/admin/*` (list pending, approve/reject, list users, set role).
+- Auth pages: `/join` (register), `/login`, `/account` (profile form, prefilled, status banner).
+- Admin: `/admin` dashboard (member approvals + role management), `/admin/blog` (markdown editor with KaTeX preview via marked+katex), `/admin/publications`.
+- `src/middleware.ts`: session + role gating for `/account` and `/admin*`; graceful redirect when DB unavailable.
+
+**Verified**: `pnpm check` clean (0 errors), `pnpm build` passes (SSR function generated). Dev server: `/api/health` OK, `/login` 200, `/account`/`/admin` redirect to `/login` when unauthenticated.
+
+**Local testing (no external services)**: added dev-mode switches so the whole flow can be tested before pushing to GitHub — `DATABASE_DRIVER=pglite` (embedded Postgres, applies `drizzle/` migrations on first use), `DEV_AUTO_VERIFY=true` (auto-verify emails on sign-up), `PUBLISH_MODE=local` (writes published markdown straight into `src/content/...`, dev server hot-reloads it), `ADMIN_EMAILS` bootstrap. `.env` loads into `process.env` via `dotenv/config` in `astro.config.mjs` (Astro/Vite only exposes these to `import.meta.env` by default). Found and fixed: Astro's origin-check rejects POSTs without a `Content-Type` header (added `application/json` to the admin approve/reject fetch). End-to-end verified with curl: register → auto-verify → login → submit profile → admin approves → `src/content/team/test-member.md` generated → `/team` shows it; blog draft → publish → `src/content/blog/*.md` with KaTeX rendered.
+
+**Next**:
+- Provision Neon, set env vars, run `pnpm db:push` (schema), then end-to-end test register → verify → submit profile → approve → PR merge.
+- Deploy to Netlify; configure env; set `ADMIN_EMAILS` for the first admin.
+- Image support (B2 decision deferred).
+- Typst support (deferred).
+
+---
+
 ### Session 8 — 2026-07-07
 
 **Goal**: Add Active Projects to the Research page, linked to specific domains.
@@ -322,3 +462,20 @@ They'll appear alongside the structured links on the detail page.
 | Top nav, singleton → multi-level later | Start simple. Build the nav as a flat list. Structure the code so nested dropdowns can be added without refactoring the whole nav. |
 | pnpm-only, no manual package.json | Ensures consistent dependency resolution. Avoids merge conflicts and stale lockfiles. |
 | Document specs + decisions in separate files | `PROJECT_SPECS.md` is the source of truth for what we're building. `DEVELOPMENT_LOG.md` tracks what happened when and why. Both are essential for maintaining context across AI coding sessions. |
+
+### 2026-08-02 — Session 9 (architecture rebuild)
+
+| Decision | Rationale |
+|----------|-----------|
+| Drop third-party CMS (no Keystatic/Decap) | Option B: build a lightweight markdown editor inside our own system. Keystatic's auth is GitHub-bound and cannot be driven by our Better Auth roles — a unified role system was a hard requirement. One login, one role source of truth. |
+| Unified roles `member`/`editor`/`admin` in `users.role` | Admin assigns roles to any registered member. Middleware + API middleware enforce them. `ADMIN_EMAILS` env auto-promotes the first admin on sign-up (bootstrap). |
+| Git stays the source of truth; Neon is the workflow queue | Pattern A. Site has zero build-time DB dependency; content is versioned, reviewable markdown. Approval generates markdown via GitHub API. |
+| Publish = GitHub branch → contents → PR → system auto-merge | Admin/editor only clicks Approve/Publish. PR keeps an auditable merge; Netlify deploys on merge. |
+| Hono mounted in an Astro catch-all API route (`src/pages/api/[...path].ts`) | All `/api/*` runs in the Netlify function; works identically in `astro dev` and the Netlify adapter. No separate function dir or `netlify.toml` redirects needed. |
+| Better Auth with Drizzle adapter, `usePlural: true`, camelCase columns | Adapter default field names are camelCase; tables plural. Sessions stored in Neon → survive serverless cold starts. |
+| Lazy `getDb()` / `getAuth()` | Prevents build-time DB/env dependency; static pages build without env vars; runtime creates clients on first use. |
+| `@astrojs/markdown-remark` `unified()` processor for KaTeX | Astro 7's default Sätteri processor has no remark/rehype plugin hook; `unified()` restores the standard pipeline. KaTeX rendered at build → zero client JS. |
+| Resend for email verification | Standard, generous free tier; Better Auth `sendVerificationEmail`/`sendResetPassword` callbacks call it. |
+| Netlify (Functions) over Cloudflare Workers | User's preference; equivalent workflow. Node serverless functions (not edge) for auth+Postgres; Netlify usage-based bandwidth argues for keeping media off the CDN. |
+| Images deferred (private B2 unresolved) | Can't use a public bucket; custom domain doesn't make a private bucket public. Candidate solutions noted (Cloudflare Worker in front of private B2 vs commit-to-repo). Revisit when adding image support. |
+| Typst deferred; markdown + KaTeX now | KaTeX at build covers equations in posts with zero JS. Typst docs can be added later via a build-time typst.ts step. |

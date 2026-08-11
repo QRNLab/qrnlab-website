@@ -1,0 +1,179 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+---
+
+<BaseLayout title="Publications editor" description="Add publications to the site">
+  <h1 class="text-3xl font-semibold tracking-tight">Publications</h1>
+  <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+    Add a publication. Publishing syncs it into the Publications page via an auto-merged pull request.
+  </p>
+
+  <form id="pub-form" class="mt-6 max-w-2xl space-y-4" novalidate>
+    <div>
+      <label for="title" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Title</label>
+      <input id="title" type="text" required placeholder="Full paper title"
+        class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none" />
+    </div>
+
+    <div>
+      <span class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Authors</span>
+      <div id="authors-list" class="mt-1 space-y-2"></div>
+      <button type="button" id="authors-add"
+        class="mt-2 inline-flex items-center gap-1.5 rounded border border-neutral-300 dark:border-neutral-600 px-3 py-1.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add author
+      </button>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div>
+        <label for="venue" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Venue</label>
+        <input id="venue" type="text" required placeholder="Journal of Radiological Protection, 46, 011002"
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none" />
+      </div>
+      <div>
+        <label for="year" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Year</label>
+        <input id="year" type="number" required min={1900} max={2100} value="2026"
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none" />
+      </div>
+      <div>
+        <label for="type" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Type</label>
+        <select id="type"
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100">
+          <option value="journal">Journal</option>
+          <option value="conference">Conference</option>
+          <option value="preprint">Preprint</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label for="url" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">URL <span class="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></label>
+      <input id="url" type="url" placeholder="https://doi.org/..."
+        class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none" />
+    </div>
+
+    <div class="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/40 p-3">
+      <p class="text-xs font-medium text-neutral-500 dark:text-neutral-400">Citation preview</p>
+      <p id="preview" class="mt-1 text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">—</p>
+    </div>
+
+    <p id="error" class="hidden text-sm text-red-600 dark:text-red-400"></p>
+    <p id="done" class="hidden text-sm text-green-700 dark:text-green-400"></p>
+
+    <button type="submit"
+      class="rounded bg-[#0b0d39] dark:bg-[#f4f2c7] px-5 py-2 text-sm font-medium text-white dark:text-[#0b0d39] hover:opacity-90 transition-opacity">
+      Create &amp; publish
+    </button>
+  </form>
+</BaseLayout>
+
+<script>
+  import { api } from "../../lib/client/api";
+
+  const form = document.getElementById("pub-form") as HTMLFormElement;
+  const errorEl = document.getElementById("error")!;
+  const doneEl = document.getElementById("done")!;
+  const previewEl = document.getElementById("preview")!;
+  const authorsList = document.getElementById("authors-list")!;
+  const authorsAdd = document.getElementById("authors-add")!;
+
+  interface AuthorRow {
+    id: number;
+    name: string;
+  }
+  let authors: AuthorRow[] = [];
+  let authorId = 0;
+
+  function renderAuthors() {
+    authorsList.innerHTML = "";
+    for (const a of authors) {
+      const row = document.createElement("div");
+      row.className = "flex items-center gap-2";
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.placeholder = "e.g. A. Banik";
+      inp.value = a.name;
+      inp.className =
+        "w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none";
+      inp.addEventListener("input", () => {
+        a.name = inp.value;
+        updatePreview();
+      });
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "shrink-0 rounded p-1 text-neutral-400 hover:text-red-500 transition-colors";
+      remove.setAttribute("aria-label", "Remove author");
+      remove.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      remove.addEventListener("click", () => {
+        authors = authors.filter((x) => x.id !== a.id);
+        renderAuthors();
+        updatePreview();
+      });
+      row.appendChild(inp);
+      row.appendChild(remove);
+      authorsList.appendChild(row);
+    }
+  }
+  authorsAdd.addEventListener("click", () => {
+    authors.push({ id: authorId++, name: "" });
+    renderAuthors();
+  });
+
+  function valueOf(name: string): string {
+    return (form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement)?.value ?? "";
+  }
+
+  function updatePreview() {
+    const authorsText = authors.map((a) => a.name.trim()).filter(Boolean).join(", ");
+    const title = valueOf("title").trim();
+    const venue = valueOf("venue").trim();
+    const year = valueOf("year").trim();
+    const venueYear = [venue, year].filter(Boolean).join(", ");
+    let c = [authorsText, title ? `"${title}."` : "", venueYear].filter(Boolean).join(" ");
+    if (c && !/[.!?]$/.test(c)) c += ".";
+    previewEl.textContent = c || "—";
+  }
+  ["title", "venue", "year", "type"].forEach((name) => {
+    (form.elements.namedItem(name) as HTMLElement).addEventListener("input", updatePreview);
+  });
+
+  renderAuthors();
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorEl.classList.add("hidden");
+    doneEl.classList.add("hidden");
+
+    const payload = {
+      title: valueOf("title"),
+      authors: authors.map((a) => a.name.trim()).filter(Boolean),
+      venue: valueOf("venue"),
+      year: Number(valueOf("year")),
+      type: valueOf("type"),
+      url: valueOf("url") || undefined,
+    };
+
+    try {
+      const created = await api<{ id: string }>("/content/publications", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const published = await api<{ url: string }>(`/content/publications/${created.id}/publish`, {
+        method: "POST",
+      });
+      doneEl.textContent = `Published — ${published.url ?? "see the PR on GitHub"}`;
+      doneEl.classList.remove("hidden");
+      form.reset();
+      authors = [];
+      renderAuthors();
+      updatePreview();
+    } catch (err: any) {
+      errorEl.textContent = err.message ?? "Could not publish.";
+      errorEl.classList.remove("hidden");
+    }
+  });
+</script>

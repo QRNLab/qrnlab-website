@@ -1,17 +1,44 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
+
+const pubs = (await getCollection("publications")).sort((a, b) => b.data.year - a.data.year);
+const groups = [
+  { type: "journal", label: "Journal Papers" },
+  { type: "conference", label: "Conference Attendings" },
+  { type: "preprint", label: "Preprints" },
+] as const;
 ---
 
 <BaseLayout title="Publications" description="QRNLab publications and conference attendings">
   <h1 class="text-3xl font-semibold tracking-tight">Publications</h1>
 
-  <section class="mt-8">
-    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">Journal Papers</h2>
-    <p class="mt-4 text-sm text-neutral-500 dark:text-neutral-400 italic">No papers listed yet.</p>
-  </section>
-
-  <section class="mt-12">
-    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">Conference Attendings</h2>
-    <p class="mt-4 text-sm text-neutral-500 dark:text-neutral-400 italic">No conference attendings listed yet.</p>
-  </section>
+  {groups.map((group) => {
+    const items = pubs.filter((p) => p.data.type === group.type);
+    return (
+      <section class="mt-8">
+        <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">{group.label}</h2>
+        {items.length === 0 ? (
+          <p class="mt-4 text-sm text-neutral-500 dark:text-neutral-400 italic">No {group.label.toLowerCase()} listed yet.</p>
+        ) : (
+          <ul class="mt-4 space-y-4 max-w-3xl">
+            {items.map((entry) => (
+              <li>
+                <p class="font-medium text-neutral-900 dark:text-neutral-100 leading-snug">{entry.data.title}</p>
+                <p class="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">
+                  {entry.data.authors.join(", ")}
+                </p>
+                <p class="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                  {entry.data.venue}, {entry.data.year}
+                  {entry.data.url && (
+                    <> · <a href={entry.data.url} target="_blank" rel="noopener noreferrer" class="text-blue-700 dark:text-blue-400 hover:underline">Link</a></>
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    );
+  })}
 </BaseLayout>

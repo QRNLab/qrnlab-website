@@ -11,6 +11,7 @@ const currentPath = Astro.url.pathname;
 
 function isActive(href: string): boolean {
   if (href === "/team") return currentPath === href || currentPath.startsWith("/team/");
+  if (href === "/blog") return currentPath === href || currentPath.startsWith("/blog/");
   return currentPath === href;
 }
 
@@ -96,8 +97,14 @@ const navItems = [
       <slot />
     </main>
     <footer class="border-t border-neutral-200 dark:border-neutral-700">
-      <div class="mx-auto max-w-5xl px-4 py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-        &copy; {new Date().getFullYear()} QRNLab
+      <div class="mx-auto max-w-5xl px-4 py-6">
+        <div class="flex flex-col items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
+          <div id="auth-links" class="flex flex-wrap justify-center gap-x-5 gap-y-1">
+            <a href="/join" class="hover:text-blue-700 dark:hover:text-blue-400 transition-colors">Register</a>
+            <a href="/login" class="hover:text-blue-700 dark:hover:text-blue-400 transition-colors">Login</a>
+          </div>
+          <p>&copy; {new Date().getFullYear()} QRNLab</p>
+        </div>
       </div>
     </footer>
     <script is:inline>
@@ -108,6 +115,57 @@ const navItems = [
       }
       function toggleMobileNav() {
         document.getElementById("nav-links").classList.toggle("hidden");
+      }
+    </script>
+    <script>
+      const authLinks = document.getElementById("auth-links");
+      if (authLinks) {
+        const linkClass = "hover:text-blue-700 dark:hover:text-blue-400 transition-colors";
+        fetch("/api/auth/get-session")
+          .then((r) => r.json())
+          .then((data) => {
+            const user = data?.user ?? null;
+            authLinks.replaceChildren();
+            if (!user) {
+              for (const [href, label] of [
+                ["/join", "Register"],
+                ["/login", "Login"],
+              ]) {
+                const a = document.createElement("a");
+                a.href = href;
+                a.className = linkClass;
+                a.textContent = label;
+                authLinks.appendChild(a);
+              }
+              return;
+            }
+            const name = document.createElement("a");
+            name.href = "/account";
+            name.className = linkClass;
+            name.textContent = user.name || "Account";
+            authLinks.appendChild(name);
+            if (user.role === "admin") {
+              const admin = document.createElement("a");
+              admin.href = "/admin";
+              admin.className = linkClass;
+              admin.textContent = "Admin";
+              authLinks.appendChild(admin);
+            }
+            const logout = document.createElement("button");
+            logout.type = "button";
+            logout.className = linkClass + " cursor-pointer";
+            logout.textContent = "Logout";
+            logout.addEventListener("click", async () => {
+              await fetch("/api/auth/sign-out", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: "{}",
+              });
+              location.href = "/";
+            });
+            authLinks.appendChild(logout);
+          })
+          .catch(() => {});
       }
     </script>
   </body>

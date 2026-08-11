@@ -15,8 +15,12 @@ const { data, id } = entry;
 >
   <Avatar name={data.name} size={72} />
   <h3 class="mt-3 font-medium text-neutral-900 dark:text-neutral-100">{data.name}</h3>
-  <p class="mt-1.5 text-sm font-medium text-amber-600 dark:text-amber-400">
-    {data.currentPosition} @ {data.currentInstitution}
-  </p>
-  <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Graduated {data.yearGraduated}</p>
+  {(data.currentPosition || data.currentInstitution) && (
+    <p class="mt-1.5 text-sm font-medium text-amber-600 dark:text-amber-400">
+      {[data.currentPosition, data.currentInstitution].filter(Boolean).join(" @ ")}
+    </p>
+  )}
+  {data.yearGraduated && (
+    <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Graduated {data.yearGraduated}</p>
+  )}
 </a>
