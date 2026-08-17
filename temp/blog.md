@@ -1,3 +1,0 @@
-YouTube Videos: The AI just needs the raw YouTube URLs (like your "Best Oral Presenter" video or Mariam's upcoming talk). The AI will auto-generate the <iframe> embed codes.
-LinkedIn Posts: URLs to prominent posts (like QRNLab updates, conference photos, or your QWorld mentoring updates).
-Blog/Articles: If you want a blog, write the first post in this file. Provide a Title, Author, Date, and 3-4 paragraphs of text (e.g., an article on "Why we need to change how we teach Quantum Mechanics").

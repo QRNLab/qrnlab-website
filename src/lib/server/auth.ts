@@ -14,6 +14,11 @@ async function createAuth() {
     secret: process.env.BETTER_AUTH_SECRET ?? 'dev-secret-change-me',
     trustedOrigins: [process.env.BETTER_AUTH_URL ?? 'http://localhost:4321'],
     database: drizzleAdapter(db, { provider: 'sqlite' }),
+    advanced: {
+      ipAddress: {
+        ipAddressHeaders: ['cf-connecting-ip', 'x-forwarded-for'],
+      },
+    },
     rateLimit: {
       enabled: true,
       storage: 'database',
