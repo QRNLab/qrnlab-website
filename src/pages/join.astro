@@ -45,11 +45,30 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         />
         <p class="mt-1 text-xs text-neutral-400 dark:text-neutral-500">At least 8 characters.</p>
       </div>
+      <div>
+        <label for="confirm-password" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Confirm password</label>
+        <input
+          id="confirm-password"
+          name="confirmPassword"
+          type="password"
+          required
+          autocomplete="new-password"
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none"
+        />
+      </div>
 
       <p id="error" class="hidden text-sm text-red-600 dark:text-red-400"></p>
       <p id="done" class="hidden rounded border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 p-3 text-sm text-green-800 dark:text-green-300">
         Account created. We sent a verification email to your inbox — click the link to verify, then sign in.
       </p>
+      <button
+        id="resend-btn"
+        type="button"
+        class="hidden w-full rounded border border-neutral-300 dark:border-neutral-600 px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+      >
+        Resend verification email
+      </button>
+      <p id="resent" class="hidden text-sm text-green-700 dark:text-green-400"></p>
 
       <button
         type="submit"
@@ -69,6 +88,25 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const form = document.getElementById("join-form") as HTMLFormElement;
   const errorEl = document.getElementById("error")!;
   const doneEl = document.getElementById("done")!;
+  const resendBtn = document.getElementById("resend-btn") as HTMLButtonElement;
+  const resentEl = document.getElementById("resent")!;
+  let registeredEmail = "";
+
+  resendBtn.addEventListener("click", async () => {
+    if (!registeredEmail) return;
+    resendBtn.disabled = true;
+    const res = await fetch("/api/auth/send-verification-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: registeredEmail, callbackURL: "/account" }),
+    });
+    const data = await res.json().catch(() => null);
+    resentEl.textContent = res.ok
+      ? "Verification email sent — check your inbox."
+      : data?.message ?? "Could not send the email right now. Try again later.";
+    resentEl.classList.remove("hidden");
+    resendBtn.disabled = false;
+  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -77,6 +115,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const name = (form.elements.namedItem("name") as HTMLInputElement).value;
     const email = (form.elements.namedItem("email") as HTMLInputElement).value;
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
+    const confirmPassword = (form.elements.namedItem("confirmPassword") as HTMLInputElement).value;
+
+    if (password !== confirmPassword) {
+      errorEl.textContent = "Passwords do not match.";
+      errorEl.classList.remove("hidden");
+      return;
+    }
 
     const res = await fetch("/api/auth/sign-up/email", {
       method: "POST",
@@ -85,6 +130,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     });
 
     if (res.ok) {
+      registeredEmail = email;
       // Auto sign-in right after registering (works in dev via DEV_AUTO_VERIFY;
       // in production the email must be verified first, so we fall back to the
       // verification message).
@@ -99,6 +145,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       }
       form.classList.add("hidden");
       doneEl.classList.remove("hidden");
+      resendBtn.classList.remove("hidden");
       return;
     }
 

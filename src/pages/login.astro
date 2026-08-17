@@ -35,6 +35,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
       <p id="error" class="hidden text-sm text-red-600 dark:text-red-400"></p>
       <p id="notice" class="hidden text-sm text-amber-600 dark:text-amber-400"></p>
+      <button
+        id="resend-btn"
+        type="button"
+        class="hidden w-full rounded border border-neutral-300 dark:border-neutral-600 px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+      >
+        Resend verification email
+      </button>
+      <p id="resent" class="hidden text-sm text-green-700 dark:text-green-400"></p>
 
       <button
         type="submit"
@@ -54,7 +62,26 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const form = document.getElementById("login-form") as HTMLFormElement;
   const errorEl = document.getElementById("error")!;
   const noticeEl = document.getElementById("notice")!;
+  const resendBtn = document.getElementById("resend-btn") as HTMLButtonElement;
+  const resentEl = document.getElementById("resent")!;
   const redirectTo = new URLSearchParams(location.search).get("redirect") ?? "/account";
+  let lastEmail = "";
+
+  resendBtn.addEventListener("click", async () => {
+    if (!lastEmail) return;
+    resendBtn.disabled = true;
+    const res = await fetch("/api/auth/send-verification-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: lastEmail, callbackURL: "/account" }),
+    });
+    const data = await res.json().catch(() => null);
+    resentEl.textContent = res.ok
+      ? "Verification email sent — check your inbox."
+      : data?.message ?? "Could not send the email right now. Try again later.";
+    resentEl.classList.remove("hidden");
+    resendBtn.disabled = false;
+  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -78,8 +105,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const data = await res.json().catch(() => null);
     if (data?.message) message = data.message;
     if (data?.error === "EMAIL_NOT_VERIFIED") {
+      lastEmail = email;
       noticeEl.textContent = "Your email is not verified yet. Check your inbox for the verification link.";
       noticeEl.classList.remove("hidden");
+      resendBtn.classList.remove("hidden");
       return;
     }
     errorEl.textContent = message;

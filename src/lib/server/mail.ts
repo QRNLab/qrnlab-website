@@ -14,22 +14,11 @@ function getResend(): Resend | null {
 }
 
 export async function sendVerificationEmail(to: string, url: string): Promise<void> {
-  const resend = getResend();
-  const link = withCallbackUrl(url, '/account');
-  if (!resend) {
-    console.warn(`[mail] RESEND_API_KEY not set — verification link skipped for ${to}: ${link}`);
-    return;
-  }
-  await resend.emails.send({
-    from: FROM_EMAIL,
+  await sendEmail({
     to,
     subject: 'Verify your QRNLab account',
-    html: `
-      <p>Thanks for joining QRNLab!</p>
-      <p>Verify your email address by clicking the link below:</p>
-      <p><a href="${link}">Verify email</a></p>
-      <p>If you did not request this, you can ignore this message.</p>
-    `,
+    link: withCallbackUrl(url, '/account'),
+    linkText: 'Verify email',
   });
 }
 
@@ -44,20 +33,34 @@ function withCallbackUrl(url: string, callback: string): string {
   }
 }
 
-export async function sendPasswordResetEmail(to: string, url: string): Promise<void> {
+async function sendEmail(opts: { to: string; subject: string; link: string; linkText: string }): Promise<void> {
   const resend = getResend();
   if (!resend) {
-    console.warn(`[mail] RESEND_API_KEY not set — password reset skipped for ${to}: ${url}`);
+    console.warn(`[mail] RESEND_API_KEY not set — "${opts.subject}" skipped for ${opts.to}: ${opts.link}`);
     return;
   }
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
-    to,
-    subject: 'Reset your QRNLab password',
+    to: opts.to,
+    subject: opts.subject,
     html: `
-      <p>Someone requested a password reset for your QRNLab account.</p>
-      <p><a href="${url}">Reset password</a></p>
+      <p>Someone requested this email for your QRNLab account.</p>
+      <p><a href="${opts.link}">${opts.linkText}</a></p>
       <p>If you did not request this, you can ignore this message.</p>
     `,
+  });
+  if (error) {
+    console.error(`[mail] Resend rejected "${opts.subject}" for ${opts.to}:`, JSON.stringify(error));
+  } else {
+    console.log(`[mail] "${opts.subject}" sent to ${opts.to}: ${data?.id}`);
+  }
+}
+
+export async function sendPasswordResetEmail(to: string, url: string): Promise<void> {
+  await sendEmail({
+    to,
+    subject: 'Reset your QRNLab password',
+    link: url,
+    linkText: 'Reset password',
   });
 }
