@@ -13,11 +13,12 @@ The dev server runs in Cloudflare's `workerd` runtime (via `@astrojs/cloudflare`
 ### Architecture: D1-backed static site
 
 - **D1 is the source of truth.** Team, blog, publications, updates all live in D1; public pages are prerendered static HTML.
-- **Content loaders** (`src/loaders/d1.ts`) run in Node during `astro build`'s content-sync phase, where Cloudflare bindings are unavailable. They fetch published content from the live Worker's `POST /api/__build` (auth: `x-build-token` header, `BUILD_TOKEN`). `BUILD_API_URL` points at the dev server locally and the deployed site in Workers Builds.
+- **Content loaders** (`src/loaders/d1.ts`) run in Node during `astro build`'s content-sync phase, where Cloudflare bindings are unavailable. Two data paths:
+  - **Local dev/build**: reads the wrangler-local D1 SQLite file directly (`node:sqlite`) — content sync runs before the dev server binds its port, so the HTTP endpoint is unreachable during sync.
+  - **Build / CI**: fetches published content from the live Worker's `POST /api/__build` (auth: `x-build-token` header, `BUILD_TOKEN`). `BUILD_API_URL` points at the dev server locally and the deployed site in Workers Builds.
 - **Publishing = a status flag** in D1 (`approved` / `published`). Approved/published rows are exposed via `__build`; drafts/pending are not. No GitHub involvement in content.
 - **Rebuilds** are triggered by `triggerRebuild()` (`src/lib/server/rebuild.ts`), which POSTs to the Cloudflare Workers Builds Deploy Hook URL (`DEPLOY_HOOK_URL`). It fires only when public visibility changes (approve/publish/delete) — not on drafts, rejections, or logins. No-op when the hook URL is unset (local dev).
-- Public pages must never touch `env.DB` directly — they only read content collections (which the loader populates from `__build`).
-- To rebuild locally, the dev server must be running (loaders hit `BUILD_API_URL=http://localhost:4321`), then `pnpm build`.
+- Public pages must never touch `env.DB` directly — they only read content collections (which the loader populates from `__build` or local D1).
 
 ### Cloudflare workflow
 

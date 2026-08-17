@@ -2,6 +2,45 @@
 
 ## Session Log
 
+### Session 18 — 2026-08-17 (dev: empty content collections)
+
+**Goal**: Fix dev-server warnings `The collection "X" does not exist or is empty` — all collections were loading empty in `astro dev`.
+
+**Root cause**: Astro's dev container runs content sync (`syncInternal`) **before** the dev server binds its port (`viteServer.listen`). The D1 loader fetched `http://localhost:4321/api/__build` during that sync window, so every attempt failed with `ECONNREFUSED` — a chicken-and-egg that retries can't fix (sync blocks server startup).
+
+**Implemented** (`src/loaders/d1.ts`):
+- The loader now has **two data paths**:
+  - **Local dev / local build**: reads the wrangler-local D1 SQLite file directly (`node:sqlite` `DatabaseSync`, read-only, dynamically imported) from `.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite`. Same row→entry mapping as `__build` (JSON columns parsed, timestamps = ms ints). Zero server dependency; dev shows local content.
+  - **Build / CI (Workers Builds)**: unchanged — fetches `POST /api/__build` from the live Worker with `x-build-token`/`BUILD_TOKEN` (`BUILD_API_URL`). Used automatically when no local D1 file exists.
+- Loader prefers the local D1 file when present, else HTTP.
+
+**Verified**: fresh `astro dev` → no warnings; `/team`, `/blog`, `/`, `/publications` all render from local D1; KaTeX blog still renders. Local `pnpm build` uses local D1 (content in `dist/`). CI path simulated by moving the local D1 file away + pointing `BUILD_API_URL` at the deployed worker → build pulled content from live `__build` successfully. `pnpm check` clean. Deployed to workers.dev (version `d5b5a0d2`).
+
+**Notes**: `AGENTS.md` architecture section updated to document the two data paths. `BUILD_API_URL`/`BUILD_TOKEN` in `.dev.vars` are the local-dev values; Workers Builds must set the real URL + the runtime `BUILD_TOKEN`.
+
+---
+
+### Session 17 — 2026-08-17 (Cloudflare rework: D1-backed static site + images)
+
+**Goal**: Replace the git-backed publishing (GitHub PR auto-merge → markdown → rebuild) with a DB-backed static site on Cloudflare — D1 is the source of truth, public pages stay 100% static HTML, and approve/publish triggers a Workers Builds rebuild via a Deploy Hook. No GitHub involvement in content.
+
+**Architecture decision** (replaces Session 9's git-as-truth): keep git only as the code source for Workers Builds; content lives in D1. Public pages prerender at build from D1; admin/account/blog-editor pages remain dynamic. Rebuild on publish fires the Deploy Hook (idempotent server-side).
+
+**Implemented**:
+- **Phase 0 — D1 (SQLite) migration**: schema (`src/lib/server/schema.ts`) converted Postgres→SQLite (`jsonb`→`text` JSON, timestamps→`integer timestamp_ms`, booleans→int); `db.ts` uses `drizzle-orm/d1` via `cf.DB`; better-auth provider `sqlite`; `drizzle.config.ts` dialect `sqlite`. Migrations `drizzle/0000_mushy_khan.sql` + `0001_rapid_beast.sql` applied local + remote. Removed PGlite/Neon deps.
+- **Phase A — content in D1**: deleted `github.ts` + markdown generation in `content.ts`; publish = status flag in D1; GITHUB secrets removed from the Worker. `scripts/migrate-content.mjs` seeded local + remote D1 from the old `src/content/*.md` files (then the `.md` files were deleted). `member_profiles` gained `title`/`image`/`institutionPage`.
+- **Phase B — build-time bridge**: `POST /api/__build` in `src/api/app.ts` (auth `x-build-token`, reads live D1, returns team/blog/publications/updates keyed by slug) + custom loader `src/loaders/d1.ts`; `content.config.ts` swaps `glob()`→`d1Loader` for team/blog/publications/updates (projects stays glob markdown). Blog markdown rendered at build via `renderMarkdown` (KaTeX works).
+- **Phase C — rebuild triggers**: `src/lib/server/rebuild.ts` `triggerRebuild()` POSTs to `DEPLOY_HOOK_URL` only on approve/publish/delete (no-op when unset). Pushed a fresh `BUILD_TOKEN` secret.
+- **Phase E — images**: `media_assets` D1 table; `src/lib/server/media.ts` (MIME allowlist, 10 MB cap, R2 put/delete); API `POST/GET/DELETE /api/media`; `src/pages/media/[...key].ts` serves R2 objects with immutable cache; `/admin/media` library (upload, grid, Copy URL, Delete); avatar upload in `/account/edit`; `Avatar.astro` renders `<img>` with initials fallback (wired into MemberCard, AlumniCard, team grid, all detail pages, `/account`); blog editor "Insert image" button.
+
+**Verified**: `pnpm check` clean, `pnpm build` passes. Full E2E: sign-up → submit profile → admin approve → member in `__build` → static `/team/member/{slug}` after rebuild. Image E2E: upload → served with correct content-type + immutable cache → delete (R2 + DB + 404); avatar flow end-to-end. Live workers.dev site confirmed (`/media/*` 404s, `/admin/media` redirects to login, security headers intact). KaTeX renders in static blog output.
+
+**Pending (Phase D — user dashboard steps, not code)**: connect repo to Workers Builds, set `BUILD_API_URL` + `BUILD_TOKEN` build vars, create Deploy Hook + `wrangler secret put DEPLOY_HOOK_URL`, attach custom domain `qrnlab.org`. `DEPLOY_HOOK_URL` runtime secret is NOT set yet.
+
+**Notes**: `process.env` reads audited — only the 6 runtime secrets remain (all `wrangler secret put`). `worker-configuration.d.ts` is gitignored (regenerated via `pnpm types`). Public pages must never touch `env.DB` directly. The production `BUILD_TOKEN` value was stored at `/tmp/build-token.txt` (not committed).
+
+---
+
 ### Session 16 — 2026-08-12
 
 **Goal**: Replace the home page "Latest Updates" (last 3 blog posts) with a curated news feed — one-line date + update entries managed from the admin area.
@@ -497,3 +536,25 @@ They'll appear alongside the structured links on the detail page.
 | Netlify (Functions) over Cloudflare Workers | User's preference; equivalent workflow. Node serverless functions (not edge) for auth+Postgres; Netlify usage-based bandwidth argues for keeping media off the CDN. |
 | Images deferred (private B2 unresolved) | Can't use a public bucket; custom domain doesn't make a private bucket public. Candidate solutions noted (Cloudflare Worker in front of private B2 vs commit-to-repo). Revisit when adding image support. |
 | Typst deferred; markdown + KaTeX now | KaTeX at build covers equations in posts with zero JS. Typst docs can be added later via a build-time typst.ts step. |
+
+### 2026-08-17 — Session 17 (Cloudflare rework)
+
+| Decision | Rationale |
+|----------|-----------|
+| D1 becomes the source of truth (replaces git-as-truth) | Keep user/dynamic data in the DB; public pages stay static. Git remains only as the code source for Workers Builds; content never touches GitHub. |
+| Publish = a status flag in D1 (`approved`/`published`) | Approve/publish just flips a column; drafts/pending are excluded from `__build`. No file writes, no PRs, no git tokens. |
+| Rebuild on publish via Cloudflare Deploy Hook | `triggerRebuild()` POSTs to the hook only when public visibility changes (approve/publish/delete). Hooks are idempotent server-side. No-op when `DEPLOY_HOOK_URL` unset (local dev). |
+| Content loaders fetch `POST /api/__build` at build time | Loaders run in Node during content-sync where bindings don't exist; the live Worker reads D1 via its binding. Authenticated with `BUILD_TOKEN`. |
+| Loader reads the wrangler-local D1 SQLite file in dev | `astro dev` runs content sync *before* the dev server binds its port, so HTTP is unreachable during sync; `node:sqlite` reads the local file instead (Session 18). |
+| `@astrojs/cloudflare` v14 on Workers (not Pages) | Adapter v14 removed Pages support; Workers + static assets is Cloudflare's recommended path with the same feature set. |
+| D1 schema: SQLite (`text` JSON, `integer timestamp_ms`) | Drizzle `sqliteTable`; timestamps must be ms to match `defaultNow()`; better-auth adapter `provider: 'sqlite'`. |
+| Images in R2 (`qrnlab-media`) served via `/media/*` Worker route | Immutable cache headers, MIME allowlist + 10 MB cap at upload; `media_assets` table tracks metadata; `/admin/media` library for editors. |
+| Avatar = `<img>` with initials-SVG fallback | `Avatar.astro` renders the uploaded image when present, otherwise the existing generated-initials avatar. |
+
+### 2026-08-17 — Session 18 (dev empty-collection fix)
+
+| Decision | Rationale |
+|----------|-----------|
+| No retry on the build endpoint | Sync blocks dev-server startup, so retries can never succeed — the endpoint is unreachable for the entire sync window. |
+| Local dev/build reads the local D1 SQLite file directly | `node:sqlite` `DatabaseSync` (read-only, dynamic import) mirrors `__build`'s row→entry mapping; gives dev local content with zero server dependency. |
+| Build/CI keeps the HTTP `__build` path | In Workers Builds there's no local D1 file, so the loader automatically falls back to fetching from the deployed site. Loader prefers local D1 when present. |
