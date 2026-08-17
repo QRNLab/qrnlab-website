@@ -33,7 +33,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const isEditorPage =
       path === '/admin/blog' || path.startsWith('/admin/blog/') ||
       path === '/admin/publications' || path.startsWith('/admin/publications/') ||
-      path === '/admin/updates' || path.startsWith('/admin/updates/');
+      path === '/admin/updates' || path.startsWith('/admin/updates/') ||
+      path === '/admin/media' || path.startsWith('/admin/media/');
     const allowed = role === 'admin' || (role === 'editor' && isEditorPage);
     if (!allowed) {
       return context.redirect('/account');

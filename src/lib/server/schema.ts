@@ -1,31 +1,26 @@
 import {
-  bigint,
-  boolean,
-  date,
   integer,
-  jsonb,
-  pgTable,
+  sqliteTable,
   text,
-  timestamp,
-} from 'drizzle-orm/pg-core';
+} from 'drizzle-orm/sqlite-core';
 
-export const users = pgTable('users', {
+export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  emailVerified: boolean('emailVerified').notNull().default(false),
+  emailVerified: integer('emailVerified', { mode: 'boolean' }).notNull().default(false),
   image: text('image'),
   role: text('role').notNull().default('member'),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
 });
 
-export const sessions = pgTable('sessions', {
+export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
-  expiresAt: timestamp('expiresAt').notNull(),
+  expiresAt: integer('expiresAt', { mode: 'timestamp_ms' }).notNull(),
   token: text('token').notNull().unique(),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
   ipAddress: text('ipAddress'),
   userAgent: text('userAgent'),
   userId: text('userId')
@@ -33,7 +28,7 @@ export const sessions = pgTable('sessions', {
     .references(() => users.id, { onDelete: 'cascade' }),
 });
 
-export const accounts = pgTable('accounts', {
+export const accounts = sqliteTable('accounts', {
   id: text('id').primaryKey(),
   accountId: text('accountId').notNull(),
   providerId: text('providerId').notNull(),
@@ -43,27 +38,29 @@ export const accounts = pgTable('accounts', {
   accessToken: text('accessToken'),
   refreshToken: text('refreshToken'),
   idToken: text('idToken'),
-  accessTokenExpiresAt: timestamp('accessTokenExpiresAt'),
-  refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt'),
+  accessTokenExpiresAt: integer('accessTokenExpiresAt', { mode: 'timestamp_ms' }),
+  refreshTokenExpiresAt: integer('refreshTokenExpiresAt', { mode: 'timestamp_ms' }),
   scope: text('scope'),
   password: text('password'),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
 });
 
-export const verifications = pgTable('verifications', {
+export const verifications = sqliteTable('verifications', {
   id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),
-  expiresAt: timestamp('expiresAt').notNull(),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  expiresAt: integer('expiresAt', { mode: 'timestamp_ms' }).notNull(),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
 });
 
 export type MemberProfile = {
   status: 'pending' | 'approved' | 'rejected';
-  category: 'member' | 'alumni';
+  category: 'pi' | 'member' | 'alumni';
   name: string;
+  title?: string | null;
+  image?: string | null;
   role?: string | null;
   focus?: string | null;
   email?: string | null;
@@ -74,12 +71,13 @@ export type MemberProfile = {
   github?: string | null;
   currentPosition?: string | null;
   currentInstitution?: string | null;
+  institutionPage?: string | null;
   yearGraduated?: number | null;
   links?: { label: string; url: string }[];
   publications?: string[];
 };
 
-export const memberProfiles = pgTable('member_profiles', {
+export const memberProfiles = sqliteTable('member_profiles', {
   userId: text('userId')
     .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
@@ -87,6 +85,8 @@ export const memberProfiles = pgTable('member_profiles', {
   slug: text('slug'),
   category: text('category').notNull().default('member'),
   name: text('name').notNull(),
+  title: text('title'),
+  image: text('image'),
   role: text('role'),
   focus: text('focus'),
   email: text('email'),
@@ -97,14 +97,15 @@ export const memberProfiles = pgTable('member_profiles', {
   github: text('github'),
   currentPosition: text('currentPosition'),
   currentInstitution: text('currentInstitution'),
+  institutionPage: text('institutionPage'),
   yearGraduated: integer('yearGraduated'),
-  links: jsonb('links').$type<{ label: string; url: string }[]>().default([]),
-  publications: jsonb('publications').$type<string[]>().default([]),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  links: text('links', { mode: 'json' }).$type<{ label: string; url: string }[]>().default([]),
+  publications: text('publications', { mode: 'json' }).$type<string[]>().default([]),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
 });
 
-export const blogPosts = pgTable('blog_posts', {
+export const blogPosts = sqliteTable('blog_posts', {
   id: text('id').primaryKey(),
   slug: text('slug').notNull().unique(),
   title: text('title').notNull(),
@@ -114,53 +115,65 @@ export const blogPosts = pgTable('blog_posts', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   authorName: text('authorName'),
-  tags: jsonb('tags').$type<string[]>().default([]),
+  tags: text('tags', { mode: 'json' }).$type<string[]>().default([]),
   status: text('status').notNull().default('draft'),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-  publishedAt: timestamp('publishedAt'),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  publishedAt: integer('publishedAt', { mode: 'timestamp_ms' }),
 });
 
-export const publicationEntries = pgTable('publications', {
+export const publicationEntries = sqliteTable('publications', {
   id: text('id').primaryKey(),
   slug: text('slug').notNull().unique(),
   title: text('title').notNull(),
-  authors: jsonb('authors').$type<string[]>().notNull(),
+  authors: text('authors', { mode: 'json' }).$type<string[]>().notNull(),
   venue: text('venue').notNull(),
   year: integer('year').notNull(),
   type: text('type').notNull().default('journal'),
   url: text('url'),
   status: text('status').notNull().default('published'),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
 });
 
-export const newsUpdates = pgTable('news_updates', {
+export const newsUpdates = sqliteTable('news_updates', {
   id: text('id').primaryKey(),
   slug: text('slug').notNull().unique(),
-  date: date('date', { mode: 'string' }).notNull(),
+  date: text('date').notNull(),
   text: text('text').notNull(),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
 });
 
-export const rateLimit = pgTable('rateLimit', {
+export const rateLimit = sqliteTable('rateLimit', {
   id: text('id').primaryKey(),
   key: text('key').notNull().unique(),
   count: integer('count').notNull(),
-  lastRequest: bigint('lastRequest', { mode: 'number' }).notNull(),
+  lastRequest: integer('lastRequest', { mode: 'number' }).notNull(),
 });
 
-export const profileSubmissions = pgTable('profile_submissions', {
+export const profileSubmissions = sqliteTable('profile_submissions', {
   id: text('id').primaryKey(),
   userId: text('userId')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+  payload: text('payload', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
   status: text('status').notNull().default('pending'),
-  submittedAt: timestamp('submittedAt').notNull().defaultNow(),
-  reviewedAt: timestamp('reviewedAt'),
+  submittedAt: integer('submittedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  reviewedAt: integer('reviewedAt', { mode: 'timestamp_ms' }),
   reviewedBy: text('reviewedBy'),
+});
+
+export const mediaAssets = sqliteTable('media_assets', {
+  id: text('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  filename: text('filename').notNull(),
+  mime: text('mime').notNull(),
+  size: integer('size').notNull(),
+  uploadedBy: text('uploadedBy')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
 });
 
 /**
@@ -179,5 +192,6 @@ export const schema = {
   blogPosts,
   publicationEntries,
   profileSubmissions,
+  mediaAssets,
   newsUpdates,
 };

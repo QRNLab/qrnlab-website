@@ -3,8 +3,11 @@ import { z } from 'zod';
 import { and, desc, eq } from 'drizzle-orm';
 import { getAuth } from '../lib/server/auth';
 import { getDb } from '../lib/server/db';
+import { triggerRebuild } from '../lib/server/rebuild';
+import { deleteImage, isAllowedMime, MAX_UPLOAD_BYTES, mediaUrl, uploadImage } from '../lib/server/media';
 import {
   blogPosts,
+  mediaAssets,
   memberProfiles,
   newsUpdates,
   profileSubmissions,
@@ -12,11 +15,10 @@ import {
   users,
 } from '../lib/server/schema';
 import {
-  deleteUpdate,
-  publishBlogPost,
-  publishPublication,
-  publishTeamMember,
-  publishUpdate,
+  resolveBlogSlug,
+  resolvePublicationSlug,
+  resolveTeamSlug,
+  resolveUpdateSlug,
 } from '../lib/server/content';
 import {
   blogSchema,
@@ -25,7 +27,6 @@ import {
   roleSchema,
   updateSchema,
 } from '../lib/shared/forms';
-import { fileExists, slugify } from '../lib/server/github';
 
 export const app = new Hono().basePath('/api');
 
@@ -40,6 +41,92 @@ app.on(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], '/auth/*', async (c
 });
 
 app.get('/health', (c) => c.json({ ok: true }));
+
+// Build-time content endpoint. Content loaders (which run in Node during
+// `astro build`) call this to fetch published content from the live D1
+// database. Authenticated with BUILD_TOKEN. Returns entries keyed by slug.
+app.post('/__build', async (c) => {
+  const token = c.req.header('x-build-token');
+  if (!token || token !== process.env.BUILD_TOKEN) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+  const db = await getDb();
+
+  const members = await db
+    .select()
+    .from(memberProfiles)
+    .where(eq(memberProfiles.status, 'approved'));
+
+  const posts = await db
+    .select()
+    .from(blogPosts)
+    .where(eq(blogPosts.status, 'published'));
+
+  const pubs = await db
+    .select()
+    .from(publicationEntries)
+    .where(eq(publicationEntries.status, 'published'));
+
+  const updates = await db.select().from(newsUpdates);
+
+  const team = members.map((m) => ({
+    id: m.slug ?? m.userId,
+    data: {
+      category: m.category,
+      name: m.name,
+      title: m.title ?? undefined,
+      image: m.image ?? undefined,
+      role: m.role ?? undefined,
+      focus: m.focus ?? undefined,
+      email: m.email ?? undefined,
+      website: m.website ?? undefined,
+      scholar: m.scholar ?? undefined,
+      linkedin: m.linkedin ?? undefined,
+      github: m.github ?? undefined,
+      currentPosition: m.currentPosition ?? undefined,
+      currentInstitution: m.currentInstitution ?? undefined,
+      institutionPage: m.institutionPage ?? undefined,
+      yearGraduated: m.yearGraduated ?? undefined,
+      links: m.links ?? [],
+      publications: m.publications ?? [],
+    },
+    body: m.bio ?? undefined,
+  }));
+
+  const blog = posts.map((p) => ({
+    id: p.slug,
+    data: {
+      title: p.title,
+      date: p.publishedAt ?? p.createdAt,
+      excerpt: p.excerpt ?? undefined,
+      author: p.authorName ?? undefined,
+      tags: p.tags ?? [],
+    },
+    body: p.body,
+  }));
+
+  const publications = pubs.map((p) => ({
+    id: p.slug,
+    data: {
+      title: p.title,
+      authors: p.authors,
+      venue: p.venue,
+      year: p.year,
+      type: p.type,
+      url: p.url ?? undefined,
+    },
+  }));
+
+  const updatesEntries = updates.map((u) => ({
+    id: u.slug,
+    data: {
+      date: u.date,
+    },
+    body: u.text,
+  }));
+
+  return c.json({ team, blog, publications, updates: updatesEntries });
+});
 
 async function safeJson(c: any): Promise<any> {
   try {
@@ -111,6 +198,7 @@ app.post('/members', async (c) => {
     status: 'pending',
     category: d.category,
     name: d.name,
+    image: d.image ?? null,
     role: d.role || null,
     focus: d.focus || null,
     email: d.email || null,
@@ -139,6 +227,7 @@ app.post('/members', async (c) => {
     payload: {
       category: d.category,
       name: d.name,
+      image: d.image ?? null,
       role: d.role ?? null,
       focus: d.focus ?? null,
       email: d.email ?? null,
@@ -232,7 +321,7 @@ app.post('/content/blog/:id/publish', async (c) => {
     return c.json({ error: 'Forbidden' }, 403);
   }
   const now = new Date();
-  const { url, slug } = await publishBlogPost({
+  const slug = await resolveBlogSlug(db, {
     slug: post.status === 'published' ? post.slug : undefined,
     title: post.title,
     excerpt: post.excerpt,
@@ -250,7 +339,8 @@ app.post('/content/blog/:id/publish', async (c) => {
       updatedAt: now,
     })
     .where(eq(blogPosts.id, id));
-  return c.json({ ok: true, url, slug });
+  await triggerRebuild();
+  return c.json({ ok: true, slug });
 });
 
 // --- Publications --------------------------------------------------------
@@ -289,7 +379,7 @@ app.post('/content/publications/:id/publish', async (c) => {
     .from(publicationEntries)
     .where(eq(publicationEntries.id, id));
   if (!pub) return c.json({ error: 'Not found' }, 404);
-  const { url, slug } = await publishPublication({
+  const slug = await resolvePublicationSlug(db, {
     title: pub.title,
     authors: pub.authors,
     venue: pub.venue,
@@ -301,9 +391,9 @@ app.post('/content/publications/:id/publish', async (c) => {
     .update(publicationEntries)
     .set({ status: 'published', slug, updatedAt: new Date() })
     .where(eq(publicationEntries.id, id));
-  return c.json({ ok: true, url, slug });
+  await triggerRebuild();
+  return c.json({ ok: true, slug });
 });
-
 // --- Latest updates ------------------------------------------------------
 
 app.get('/content/updates', async (c) => {
@@ -324,7 +414,7 @@ app.post('/content/updates', async (c) => {
   const d = parsed.data;
   const id = crypto.randomUUID();
   const db = await getDb();
-  const { url, slug } = await publishUpdate({ date: d.date, text: d.text });
+  const slug = await resolveUpdateSlug(db, { date: d.date, text: d.text });
   await db.insert(newsUpdates).values({
     id,
     slug,
@@ -332,7 +422,8 @@ app.post('/content/updates', async (c) => {
     text: d.text,
     updatedAt: new Date(),
   });
-  return c.json({ ok: true, id, slug, url });
+  await triggerRebuild();
+  return c.json({ ok: true, id, slug });
 });
 
 app.delete('/content/updates/:id', async (c) => {
@@ -342,8 +433,8 @@ app.delete('/content/updates/:id', async (c) => {
   const db = await getDb();
   const [update] = await db.select().from(newsUpdates).where(eq(newsUpdates.id, id));
   if (!update) return c.json({ error: 'Not found' }, 404);
-  await deleteUpdate(update.slug);
   await db.delete(newsUpdates).where(eq(newsUpdates.id, id));
+  await triggerRebuild();
   return c.json({ ok: true });
 });
 
@@ -372,21 +463,14 @@ app.post('/admin/members/:userId/approve', async (c) => {
   if (!profile) return c.json({ error: 'Not found' }, 404);
   if (profile.status === 'approved') return c.json({ error: 'Already approved' }, 400);
 
-  // Reuse the existing published file when we have a stored slug, or when the
-  // slugified name matches an existing file (migrates rows approved before
-  // slug tracking). Otherwise create a new file.
-  let slug = profile.slug;
-  if (!slug) {
-    const candidate = slugify(profile.name);
-    if (await fileExists(`src/content/team/${candidate}.md`)) slug = candidate;
-  }
-  const { url, slug: publishedSlug } = await publishTeamMember(profile, slug ?? undefined);
+  const slug = await resolveTeamSlug(db, profile);
   await db
     .update(memberProfiles)
-    .set({ status: 'approved', slug: publishedSlug, updatedAt: new Date() })
+    .set({ status: 'approved', slug, updatedAt: new Date() })
     .where(eq(memberProfiles.userId, userId));
   await markSubmissionReviewed(db, userId, 'approved', user.id);
-  return c.json({ ok: true, url, slug: publishedSlug });
+  await triggerRebuild();
+  return c.json({ ok: true, slug });
 });
 
 app.post('/admin/members/:userId/reject', async (c) => {
@@ -459,14 +543,7 @@ app.post('/admin/users/:id/category', async (c) => {
       .update(memberProfiles)
       .set({ category: parsed.data.category, updatedAt: new Date() })
       .where(eq(memberProfiles.userId, id));
-    // Approved profiles go live immediately by re-publishing with the same slug.
-    if (profile.status === 'approved') {
-      const { url } = await publishTeamMember(
-        { ...profile, category: parsed.data.category },
-        profile.slug ?? undefined,
-      );
-      return c.json({ ok: true, url });
-    }
+    if (profile.status === 'approved') await triggerRebuild();
     return c.json({ ok: true });
   }
 
@@ -477,5 +554,71 @@ app.post('/admin/users/:id/category', async (c) => {
     category: parsed.data.category,
     name: target.name,
   });
+  return c.json({ ok: true });
+});
+
+// --- Media uploads --------------------------------------------------------
+
+app.post('/media', async (c) => {
+  const user = await requireAuth(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+
+  const form = await c.req.formData().catch(() => null);
+  if (!form) return c.json({ error: 'Invalid form data' }, 400);
+  const file = form.get('file');
+  if (!(file instanceof File)) return c.json({ error: 'No file uploaded' }, 400);
+
+  const purpose = form.get('purpose');
+  if (purpose !== 'avatar' && purpose !== 'blog' && purpose !== 'page') {
+    return c.json({ error: 'Invalid purpose' }, 400);
+  }
+
+  if (!isAllowedMime(file.type)) {
+    return c.json({ error: 'Unsupported file type' }, 400);
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return c.json({ error: 'File too large (max 10 MB)' }, 400);
+  }
+
+  const bytes = await file.arrayBuffer();
+  const db = await getDb();
+  const key = await uploadImage({
+    purpose,
+    filename: file.name,
+    mime: file.type,
+    bytes,
+  });
+  const id = crypto.randomUUID();
+  await db.insert(mediaAssets).values({
+    id,
+    key,
+    filename: file.name,
+    mime: file.type,
+    size: file.size,
+    uploadedBy: user.id,
+  });
+
+  return c.json({ ok: true, id, key, url: mediaUrl(key) });
+});
+
+app.get('/media', async (c) => {
+  const user = await requireRole(c, 'admin');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const db = await getDb();
+  const items = await db.select().from(mediaAssets).orderBy(desc(mediaAssets.createdAt));
+  return c.json({
+    media: items.map((m) => ({ ...m, url: mediaUrl(m.key) })),
+  });
+});
+
+app.delete('/media/:id', async (c) => {
+  const user = await requireRole(c, 'admin');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = await getDb();
+  const [asset] = await db.select().from(mediaAssets).where(eq(mediaAssets.id, id));
+  if (!asset) return c.json({ error: 'Not found' }, 404);
+  await deleteImage(asset.key);
+  await db.delete(mediaAssets).where(eq(mediaAssets.id, id));
   return c.json({ ok: true });
 });

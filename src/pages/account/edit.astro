@@ -69,6 +69,22 @@ const linksText = (p?.links ?? []).map((l) => `${l.label} :: ${l.url}`).join("\n
           class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none" />
       </div>
 
+      <div>
+        <span class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Profile picture</span>
+        <div class="mt-2 flex items-center gap-4">
+          <img id="avatar-preview" src={p?.image ?? ""} alt="" class={`h-20 w-20 rounded-full object-cover ${p?.image ? "" : "hidden"}`} />
+          <div class="flex items-center gap-2">
+            <label class="cursor-pointer rounded border border-neutral-300 dark:border-neutral-600 px-3 py-1.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+              Choose image
+              <input id="avatar-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" class="sr-only" />
+            </label>
+            <button type="button" id="avatar-remove" class={`text-sm text-neutral-500 dark:text-neutral-400 hover:text-red-600 transition-colors ${p?.image ? "" : "hidden"}`}>Remove</button>
+          </div>
+        </div>
+        <input type="hidden" id="avatar-url" value={p?.image ?? ""} />
+        <p class="mt-1 text-xs text-neutral-400 dark:text-neutral-500">JPEG, PNG, WebP, GIF or AVIF, up to 10 MB. Saved with your profile; shown after approval.</p>
+      </div>
+
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
           <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Role</label>
@@ -160,12 +176,50 @@ const linksText = (p?.links ?? []).map((l) => `${l.label} :: ${l.url}`).join("\n
   const alumniFields = document.getElementById("alumni-fields")!;
   const memberRadio = form.querySelector<HTMLInputElement>('input[name="category"][value="member"]')!;
   const alumniRadio = form.querySelector<HTMLInputElement>('input[name="category"][value="alumni"]')!;
-
   function syncCategory() {
     alumniFields.classList.toggle("hidden", !alumniRadio.checked);
   }
   memberRadio.addEventListener("change", syncCategory);
   alumniRadio.addEventListener("change", syncCategory);
+
+  const avatarPreview = document.getElementById("avatar-preview") as HTMLImageElement;
+  const avatarFile = document.getElementById("avatar-file") as HTMLInputElement;
+  const avatarUrlInput = document.getElementById("avatar-url") as HTMLInputElement;
+  const avatarRemove = document.getElementById("avatar-remove") as HTMLButtonElement;
+
+  function setAvatar(url: string) {
+    avatarUrlInput.value = url;
+    if (url) {
+      avatarPreview.src = url;
+      avatarPreview.classList.remove("hidden");
+      avatarRemove.classList.remove("hidden");
+    } else {
+      avatarPreview.src = "";
+      avatarPreview.classList.add("hidden");
+      avatarRemove.classList.add("hidden");
+    }
+  }
+
+  avatarFile.addEventListener("change", async () => {
+    const file = avatarFile.files?.[0];
+    if (!file) return;
+    errorEl.classList.add("hidden");
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("purpose", "avatar");
+    try {
+      const res = await fetch("/api/media", { method: "POST", body: formData });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "Upload failed.");
+      setAvatar(data.url);
+    } catch (err: any) {
+      errorEl.textContent = err.message ?? "Upload failed.";
+      errorEl.classList.remove("hidden");
+    }
+    avatarFile.value = "";
+  });
+
+  avatarRemove.addEventListener("click", () => setAvatar(""));
 
   const pubsEditor = document.getElementById("pubs-editor")!;
   const pubsAdd = document.getElementById("pubs-add")!;
@@ -289,6 +343,7 @@ const linksText = (p?.links ?? []).map((l) => `${l.label} :: ${l.url}`).join("\n
     const payload = {
       category,
       name: valueOf("name"),
+      image: avatarUrlInput.value || undefined,
       role: valueOf("role") || undefined,
       focus: valueOf("focus") || undefined,
       email: valueOf("email") || undefined,

@@ -1,0 +1,113 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+---
+
+<BaseLayout title="Media library" description="Upload and manage images for the site">
+  <div class="flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold tracking-tight">Media library</h1>
+      <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+        Images are stored in R2 and served from this site. Use the copy button to get the URL for a page or blog post.
+      </p>
+    </div>
+    <label class="shrink-0 cursor-pointer rounded bg-[#0b0d39] dark:bg-[#f4f2c7] px-4 py-2 text-sm font-medium text-white dark:text-[#0b0d39] hover:opacity-90 transition-opacity">
+      Upload image
+      <input id="file-input" type="file" accept="image/*" class="sr-only" />
+    </label>
+  </div>
+
+  <p id="error" class="hidden mt-4 text-sm text-red-600 dark:text-red-400"></p>
+  <p id="done" class="hidden mt-4 text-sm text-green-700 dark:text-green-400"></p>
+
+  <section class="mt-8">
+    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">All images</h2>
+    <div id="grid" class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"></div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { api } from "../../lib/client/api";
+
+  const grid = document.getElementById("grid")!;
+  const fileInput = document.getElementById("file-input") as HTMLInputElement;
+  const errorEl = document.getElementById("error")!;
+  const doneEl = document.getElementById("done")!;
+
+  async function load() {
+    const data = await api<{ media: any[] }>("/media");
+    const items = data.media ?? [];
+    grid.innerHTML = "";
+    if (items.length === 0) {
+      grid.innerHTML = '<p class="col-span-full text-sm text-neutral-500 dark:text-neutral-400 italic">No images yet.</p>';
+      return;
+    }
+    for (const item of items) {
+      const card = document.createElement("div");
+      card.className = "flex flex-col overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700";
+      const img = document.createElement("img");
+      img.src = item.url;
+      img.alt = item.filename;
+      img.loading = "lazy";
+      img.className = "h-36 w-full object-cover bg-neutral-100 dark:bg-neutral-800";
+      const body = document.createElement("div");
+      body.className = "flex items-center justify-between gap-2 p-2";
+      const name = document.createElement("span");
+      name.className = "truncate text-xs text-neutral-500 dark:text-neutral-400";
+      name.textContent = item.filename;
+      const actions = document.createElement("div");
+      actions.className = "flex shrink-0 gap-1";
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "rounded border border-neutral-300 dark:border-neutral-600 px-2 py-1 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors";
+      copyBtn.textContent = "Copy";
+      copyBtn.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(item.url).catch(() => {});
+        doneEl.textContent = "URL copied.";
+        doneEl.classList.remove("hidden");
+        setTimeout(() => doneEl.classList.add("hidden"), 1500);
+      });
+      const delBtn = document.createElement("button");
+      delBtn.className = "rounded border border-neutral-300 dark:border-neutral-600 px-2 py-1 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-red-400 hover:text-red-600 transition-colors";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", async () => {
+        if (!confirm(`Delete "${item.filename}"?`)) return;
+        try {
+          await api(`/media/${item.id}`, { method: "DELETE" });
+          await load();
+        } catch (err: any) {
+          errorEl.textContent = err.message ?? "Could not delete image.";
+          errorEl.classList.remove("hidden");
+        }
+      });
+      actions.append(copyBtn, delBtn);
+      body.appendChild(name);
+      body.appendChild(actions);
+      card.appendChild(img);
+      card.appendChild(body);
+      grid.appendChild(card);
+    }
+  }
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    errorEl.classList.add("hidden");
+    doneEl.classList.add("hidden");
+    const form = new FormData();
+    form.append("file", file);
+    form.append("purpose", "page");
+    try {
+      await api("/media", { method: "POST", body: form, headers: {} });
+      doneEl.textContent = "Uploaded.";
+      doneEl.classList.remove("hidden");
+      fileInput.value = "";
+      await load();
+    } catch (err: any) {
+      errorEl.textContent = err.message ?? "Upload failed.";
+      errorEl.classList.remove("hidden");
+    }
+  });
+
+  load();
+</script>

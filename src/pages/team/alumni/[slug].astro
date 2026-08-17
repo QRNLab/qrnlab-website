@@ -18,7 +18,7 @@ const pubs = data.publications || [];
 
 <BaseLayout title={data.name} description={`${data.name} — Alumni, QRNLab`}>
   <div class="flex items-start gap-6">
-    <Avatar name={data.name} size={96} />
+    <Avatar name={data.name} image={data.image} size={96} />
     <div>
       <h1 class="text-3xl font-semibold tracking-tight">{data.name}</h1>
       {(data.currentPosition || data.currentInstitution) && (

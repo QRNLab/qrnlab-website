@@ -1,6 +1,7 @@
 export async function api<T = any>(path: string, options: RequestInit = {}): Promise<T> {
+  const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const res = await fetch('/api' + path, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers ?? {}) },
+    headers: isForm ? { ...(options.headers ?? {}) } : { 'Content-Type': 'application/json', ...(options.headers ?? {}) },
     ...options,
   });
   const data = await res.json().catch(() => null);

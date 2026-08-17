@@ -4,6 +4,7 @@ dist/
 
 # generated types
 .astro/
+worker-configuration.d.ts
 # dependencies
 node_modules/
 
@@ -17,9 +18,10 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.production
+.dev.vars
 
-# local embedded database (PGlite)
-pglite-data/
+# wrangler local state (D1/R2 emulation)
+.wrangler/
 
 # macOS-specific files
 .DS_Store

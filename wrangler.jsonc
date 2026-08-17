@@ -1,0 +1,28 @@
+{
+  "name": "qrnlab-site",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-08-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "BETTER_AUTH_URL": "https://qrnlab.org"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "qrnlab",
+      "database_id": "8b9a05f5-3005-4ab8-af7a-3120b9cbfbe6",
+      "migrations_dir": "./drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "qrnlab-media"
+    }
+  ]
+}

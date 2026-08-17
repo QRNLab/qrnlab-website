@@ -1,9 +1,10 @@
 import { defineCollection } from 'astro:content';
 import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
+import { d1Loader } from './loaders/d1';
 
 const team = defineCollection({
-  loader: glob({ pattern: '**/*.md', base: 'src/content/team' }),
+  loader: d1Loader('team'),
   schema: z.object({
     category: z.enum(['pi', 'member', 'alumni']),
     name: z.string(),
@@ -29,7 +30,7 @@ const team = defineCollection({
 });
 
 const blog = defineCollection({
-  loader: glob({ pattern: '**/*.md', base: 'src/content/blog' }),
+  loader: d1Loader('blog'),
   schema: z.object({
     title: z.string(),
     date: z.coerce.date(),
@@ -40,7 +41,7 @@ const blog = defineCollection({
 });
 
 const publications = defineCollection({
-  loader: glob({ pattern: '**/*.md', base: 'src/content/publications' }),
+  loader: d1Loader('publications'),
   schema: z.object({
     title: z.string(),
     authors: z.array(z.string()),
@@ -65,7 +66,7 @@ const projects = defineCollection({
 });
 
 const updates = defineCollection({
-  loader: glob({ pattern: '**/*.md', base: 'src/content/updates' }),
+  loader: d1Loader('updates'),
   schema: z.object({
     date: z.coerce.date(),
   }),

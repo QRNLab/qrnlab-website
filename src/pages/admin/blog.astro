@@ -39,6 +39,13 @@ export const prerender = false;
         <label for="body" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Body (Markdown + KaTeX)</label>
         <textarea id="body" rows={14} required
           class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 font-mono text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none"></textarea>
+        <div class="mt-2 flex items-center gap-2">
+          <label class="cursor-pointer rounded border border-neutral-300 dark:border-neutral-600 px-3 py-1.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+            Insert image
+            <input id="image-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" class="sr-only" />
+          </label>
+          <span id="image-status" class="text-xs text-neutral-400 dark:text-neutral-500">Uploads to the media library; inserts a Markdown image link.</span>
+        </div>
       </div>
 
       <div class="flex flex-wrap gap-2">
@@ -199,6 +206,35 @@ export const prerender = false;
   document.getElementById("new-post")!.addEventListener("click", openNew);
   document.getElementById("cancel-btn")!.addEventListener("click", () => {
     editorEl.classList.add("hidden");
+  });
+
+  const imageInput = document.getElementById("image-input") as HTMLInputElement;
+  const imageStatus = document.getElementById("image-status")!;
+  imageInput.addEventListener("change", async () => {
+    const file = imageInput.files?.[0];
+    if (!file) return;
+    imageStatus.textContent = "Uploading…";
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("purpose", "blog");
+    try {
+      const res = await fetch("/api/media", { method: "POST", body: formData });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "Upload failed.");
+      const insert = `\n\n![${file.name.replace(/\.[^.]+$/, "")}](${data.url})\n\n`;
+      const start = bodyInput.selectionStart ?? bodyInput.value.length;
+      bodyInput.value = bodyInput.value.slice(0, start) + insert + bodyInput.value.slice(start);
+      bodyInput.focus();
+      bodyInput.setSelectionRange(start + insert.length, start + insert.length);
+      imageStatus.textContent = "Image inserted.";
+      if (!previewEl.classList.contains("hidden")) {
+        previewEl.innerHTML = renderPreview(bodyInput.value);
+      }
+    } catch (err: any) {
+      imageStatus.textContent = err.message ?? "Upload failed.";
+    }
+    imageInput.value = "";
+    setTimeout(() => (imageStatus.textContent = ""), 3000);
   });
   form.addEventListener("submit", (e) => {
     e.preventDefault();

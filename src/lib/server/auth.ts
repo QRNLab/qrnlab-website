@@ -13,7 +13,7 @@ async function createAuth() {
     basePath: '/api/auth',
     secret: process.env.BETTER_AUTH_SECRET ?? 'dev-secret-change-me',
     trustedOrigins: [process.env.BETTER_AUTH_URL ?? 'http://localhost:4321'],
-    database: drizzleAdapter(db, { provider: 'pg' }),
+    database: drizzleAdapter(db, { provider: 'sqlite' }),
     rateLimit: {
       enabled: true,
       storage: 'database',
