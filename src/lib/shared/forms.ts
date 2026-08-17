@@ -22,6 +22,7 @@ const linkItem = z.object({
 export const profileSchema = z.object({
   category: z.enum(['member', 'alumni']).default('member'),
   name: z.string().trim().min(1).max(200),
+  title: optionalText(200),
   image: z.string().trim().max(500).optional(),
   role: optionalText(200),
   focus: optionalText(200),

@@ -70,6 +70,12 @@ const linksText = (p?.links ?? []).map((l) => `${l.label} :: ${l.url}`).join("\n
       </div>
 
       <div>
+        <label for="title" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Title <span class="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></label>
+        <input id="title" name="title" type="text" value={p?.title ?? ""} placeholder="e.g. Professor, Department of Physics, University of Chittagong"
+          class="mt-1 w-full rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:border-blue-500 focus:outline-none" />
+      </div>
+
+      <div>
         <span class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Profile picture</span>
         <div class="mt-2 flex items-center gap-4">
           <img id="avatar-preview" src={p?.image ?? ""} alt="" class={`h-20 w-20 rounded-full object-cover ${p?.image ? "" : "hidden"}`} />
@@ -343,6 +349,7 @@ const linksText = (p?.links ?? []).map((l) => `${l.label} :: ${l.url}`).join("\n
     const payload = {
       category,
       name: valueOf("name"),
+      title: valueOf("title") || undefined,
       image: avatarUrlInput.value || undefined,
       role: valueOf("role") || undefined,
       focus: valueOf("focus") || undefined,

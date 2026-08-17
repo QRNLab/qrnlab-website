@@ -193,11 +193,19 @@ app.post('/members', async (c) => {
   }
   const d = parsed.data;
   const db = await getDb();
+  // Admin-assigned PI status is protected from profile edits: users can toggle
+  // member/alumni freely, but only an admin can change someone away from 'pi'.
+  const [existingProfile] = await db
+    .select()
+    .from(memberProfiles)
+    .where(eq(memberProfiles.userId, user.id));
+  const category = existingProfile?.category === 'pi' ? 'pi' : d.category;
   const values = {
     userId: user.id,
     status: 'pending',
-    category: d.category,
+    category,
     name: d.name,
+    title: d.title ?? null,
     image: d.image ?? null,
     role: d.role || null,
     focus: d.focus || null,
@@ -225,8 +233,9 @@ app.post('/members', async (c) => {
     id: crypto.randomUUID(),
     userId: user.id,
     payload: {
-      category: d.category,
+      category,
       name: d.name,
+      title: d.title ?? null,
       image: d.image ?? null,
       role: d.role ?? null,
       focus: d.focus ?? null,
@@ -597,7 +606,7 @@ app.post('/admin/users/:id/category', async (c) => {
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const { id } = c.req.param();
   const parsed = z
-    .object({ category: z.enum(['member', 'alumni']) })
+    .object({ category: z.enum(['member', 'alumni', 'pi']) })
     .safeParse(await safeJson(c));
   if (!parsed.success) {
     return c.json({ error: 'Invalid input', issues: parsed.error.issues }, 400);

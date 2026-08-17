@@ -102,8 +102,9 @@ const userList = await db
               <td class="px-4 py-2">
                 <div class="relative inline-block">
                   <select data-user={u.id} class="category-select appearance-none rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 py-1.5 pl-2.5 pr-7 text-sm text-neutral-900 dark:text-neutral-100 hover:border-neutral-400 dark:hover:border-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="member" selected={u.category !== "alumni"}>member</option>
+                    <option value="member" selected={u.category === "member" || u.category == null}>member</option>
                     <option value="alumni" selected={u.category === "alumni"}>alumni</option>
+                    <option value="pi" selected={u.category === "pi"}>pi</option>
                   </select>
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
                 </div>
