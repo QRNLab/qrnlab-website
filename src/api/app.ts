@@ -6,20 +6,24 @@ import { getDb } from '../lib/server/db';
 import {
   blogPosts,
   memberProfiles,
+  newsUpdates,
   profileSubmissions,
   publicationEntries,
   users,
 } from '../lib/server/schema';
 import {
+  deleteUpdate,
   publishBlogPost,
   publishPublication,
   publishTeamMember,
+  publishUpdate,
 } from '../lib/server/content';
 import {
   blogSchema,
   profileSchema,
   publicationSchema,
   roleSchema,
+  updateSchema,
 } from '../lib/shared/forms';
 import { fileExists, slugify } from '../lib/server/github';
 
@@ -298,6 +302,49 @@ app.post('/content/publications/:id/publish', async (c) => {
     .set({ status: 'published', slug, updatedAt: new Date() })
     .where(eq(publicationEntries.id, id));
   return c.json({ ok: true, url, slug });
+});
+
+// --- Latest updates ------------------------------------------------------
+
+app.get('/content/updates', async (c) => {
+  const user = await requireRole(c, 'editor');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const db = await getDb();
+  const updates = await db.select().from(newsUpdates).orderBy(desc(newsUpdates.date), desc(newsUpdates.createdAt));
+  return c.json({ updates });
+});
+
+app.post('/content/updates', async (c) => {
+  const user = await requireRole(c, 'editor');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const parsed = updateSchema.safeParse(await safeJson(c));
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', issues: parsed.error.issues }, 400);
+  }
+  const d = parsed.data;
+  const id = crypto.randomUUID();
+  const db = await getDb();
+  const { url, slug } = await publishUpdate({ date: d.date, text: d.text });
+  await db.insert(newsUpdates).values({
+    id,
+    slug,
+    date: d.date,
+    text: d.text,
+    updatedAt: new Date(),
+  });
+  return c.json({ ok: true, id, slug, url });
+});
+
+app.delete('/content/updates/:id', async (c) => {
+  const user = await requireRole(c, 'editor');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = await getDb();
+  const [update] = await db.select().from(newsUpdates).where(eq(newsUpdates.id, id));
+  if (!update) return c.json({ error: 'Not found' }, 404);
+  await deleteUpdate(update.slug);
+  await db.delete(newsUpdates).where(eq(newsUpdates.id, id));
+  return c.json({ ok: true });
 });
 
 // --- Admin ---------------------------------------------------------------

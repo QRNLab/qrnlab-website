@@ -1,5 +1,5 @@
 import YAML from 'yaml';
-import { createUniqueSlug, writeFileViaPr } from './github';
+import { createUniqueSlug, deleteFileViaPr, writeFileViaPr } from './github';
 
 export interface TeamProfileData {
   category?: string | null;
@@ -130,4 +130,26 @@ export async function publishPublication(pub: PublicationData): Promise<{ url: s
     content,
     message: `Add publication: ${pub.title}`,
   }).then((res) => ({ ...res, slug }));
+}
+
+export interface UpdateData {
+  date: string;
+  text: string;
+}
+
+export async function publishUpdate(update: UpdateData): Promise<{ url: string; slug: string }> {
+  const slug = await createUniqueSlug(update.date, 'src/content/updates');
+  const content = toMarkdown({ date: update.date }, update.text);
+  return writeFileViaPr({
+    path: `src/content/updates/${slug}.md`,
+    content,
+    message: `Add latest update: ${update.text}`,
+  }).then((res) => ({ ...res, slug }));
+}
+
+export async function deleteUpdate(slug: string): Promise<{ url: string }> {
+  return deleteFileViaPr({
+    path: `src/content/updates/${slug}.md`,
+    message: `Remove latest update: ${slug}`,
+  });
 }

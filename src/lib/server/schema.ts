@@ -1,6 +1,7 @@
 import {
   bigint,
   boolean,
+  date,
   integer,
   jsonb,
   pgTable,
@@ -134,6 +135,15 @@ export const publicationEntries = pgTable('publications', {
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 });
 
+export const newsUpdates = pgTable('news_updates', {
+  id: text('id').primaryKey(),
+  slug: text('slug').notNull().unique(),
+  date: date('date', { mode: 'string' }).notNull(),
+  text: text('text').notNull(),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
+
 export const rateLimit = pgTable('rateLimit', {
   id: text('id').primaryKey(),
   key: text('key').notNull().unique(),
@@ -169,4 +179,5 @@ export const schema = {
   blogPosts,
   publicationEntries,
   profileSubmissions,
+  newsUpdates,
 };

@@ -29,6 +29,13 @@
       "when": 1785740006383,
       "tag": "0003_goofy_runaways",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786472598092,
+      "tag": "0004_worthless_talkback",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,24 @@
 
 ## Session Log
 
+### Session 16 — 2026-08-12
+
+**Goal**: Replace the home page "Latest Updates" (last 3 blog posts) with a curated news feed — one-line date + update entries managed from the admin area.
+
+**Implemented**:
+- **`updates` content collection** (`src/content/updates/*.md`): frontmatter `date` (YYYY-MM-DD) + one-line body. Home page reads it (zero DB dependency, stays static).
+- **DB layer**: new `news_updates` table (id, slug, date, text, timestamps) via migration `drizzle/0004_*`. DB is the admin/queue layer; markdown is the published truth (same pattern as blog/publications).
+- **Publish pipeline**: `publishUpdate` (slug = date, `createUniqueSlug` handles same-day collisions) and `deleteUpdate`; new `deleteFileViaPr` in `github.ts` (local `unlinkSync`; GitHub branch → DELETE contents → PR → auto-merge) — first delete support in the repo.
+- **API** (`src/api/app.ts`, editor+ gated): `GET/POST/DELETE /content/updates`; `updateSchema` (`YYYY-MM-DD` date + trimmed 1–500 char text) in `forms.ts`.
+- **Admin**: new `/admin/updates` page (add form + list with Delete, following blog/publications patterns), linked from `/admin`; `/admin/updates` added to the middleware `isEditorPage` set (editors + admins).
+- **Home page** (`index.astro`): "Latest Updates" heading now renders a bordered box with a bullet list of **all** updates newest-first as `[date] [update]`; empty state "No updates yet."
+
+**Verified**: `pnpm check` clean, `pnpm build` passes. E2E in dev (`PUBLISH_MODE=local` + PGlite): add → file `src/content/updates/<date>.md` generated + home shows it; same-day collision → `-2` slug; invalid date rejected (400); delete → DB row + file removed; member role blocked from `/admin/updates` (302 → `/account`), admin/editor allowed.
+
+**Notes**: Astro's dev glob loader doesn't pick up brand-new files in a previously-empty collection dir until the dev server restarts (content re-sync). Test users/data created during verification were cleaned up; `src/content/updates/` left empty.
+
+---
+
 ### Session 15 — 2026-08-03
 
 **Goal**: Replace instruction text with structured, JS-driven editors for adding publications.
