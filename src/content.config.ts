@@ -44,7 +44,10 @@ const publications = defineCollection({
   loader: d1Loader('publications'),
   schema: z.object({
     title: z.string(),
-    authors: z.array(z.string()),
+    authors: z.array(z.object({
+      name: z.string(),
+      memberSlug: z.string().optional(),
+    })),
     venue: z.string(),
     year: z.number(),
     type: z.enum(['journal', 'conference', 'preprint']).default('journal'),

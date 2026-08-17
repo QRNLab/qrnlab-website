@@ -3,6 +3,7 @@ import {
   sqliteTable,
   text,
 } from 'drizzle-orm/sqlite-core';
+import type { PublicationAuthor } from '../shared/forms';
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -126,7 +127,7 @@ export const publicationEntries = sqliteTable('publications', {
   id: text('id').primaryKey(),
   slug: text('slug').notNull().unique(),
   title: text('title').notNull(),
-  authors: text('authors', { mode: 'json' }).$type<string[]>().notNull(),
+  authors: text('authors', { mode: 'json' }).$type<PublicationAuthor[]>().notNull(),
   venue: text('venue').notNull(),
   year: integer('year').notNull(),
   type: text('type').notNull().default('journal'),

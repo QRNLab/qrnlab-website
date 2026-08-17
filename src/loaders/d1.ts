@@ -1,6 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Loader } from 'astro/loaders';
+import type { PublicationAuthor } from '../lib/shared/forms';
 
 interface BuildEntry {
   id: string;
@@ -183,7 +184,7 @@ async function tryLoadLocalD1(
       id: p.slug,
       data: {
         title: p.title,
-        authors: (parseJson(p.authors) as string[]) ?? [],
+        authors: (parseJson(p.authors) as PublicationAuthor[]) ?? [],
         venue: p.venue,
         year: p.year,
         type: p.type,

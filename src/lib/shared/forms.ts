@@ -45,9 +45,17 @@ export const blogSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
 });
 
+export type PublicationAuthor = { name: string; memberSlug?: string };
+
 export const publicationSchema = z.object({
   title: z.string().trim().min(1).max(300),
-  authors: z.array(z.string().trim().min(1).max(200)).min(1).max(50),
+  authors: z
+    .array(z.object({
+      name: z.string().trim().min(1).max(200),
+      memberSlug: z.string().trim().max(200).optional(),
+    }))
+    .min(1)
+    .max(50),
   venue: z.string().trim().min(1).max(300),
   year: z.number().int().min(1900).max(2100),
   type: z.enum(['journal', 'conference', 'preprint']).default('journal'),

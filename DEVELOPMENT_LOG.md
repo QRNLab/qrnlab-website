@@ -558,3 +558,17 @@ They'll appear alongside the structured links on the detail page.
 | No retry on the build endpoint | Sync blocks dev-server startup, so retries can never succeed — the endpoint is unreachable for the entire sync window. |
 | Local dev/build reads the local D1 SQLite file directly | `node:sqlite` `DatabaseSync` (read-only, dynamic import) mirrors `__build`'s row→entry mapping; gives dev local content with zero server dependency. |
 | Build/CI keeps the HTTP `__build` path | In Workers Builds there's no local D1 file, so the loader automatically falls back to fetching from the deployed site. Loader prefers local D1 when present. |
+
+### 2026-08-18 — Session 19 (fresh start, auth hardening, author links)
+
+| Decision | Rationale |
+|----------|-----------|
+| Wipe all D1 content + R2 objects; fresh start | Remove all test/dummy data before going live; content re-entered via the normal flows. `temp/` scratch docs removed from the repo. |
+| Admin account bootstrapped directly into D1 | Better-auth hash format is `salt(hex16):scrypt(password,64,{N:16384,r:16,p:1})`; inserted user + credential row on local and remote so admin works without a Resend round-trip. `ADMIN_EMAILS` is also set in prod for future sign-ups. |
+| Client IP from `CF-Connecting-IP` for Better Auth rate limiting | Workers must be told which header carries the real client IP, otherwise rate limits collapse to one shared per-path bucket. `advanced.ipAddress.ipAddressHeaders: ['cf-connecting-ip','x-forwarded-for']`. |
+| Confirm-password field on `/join` | Client-side match check before submit; prevents typos creating unusable accounts. |
+| Mail sends now inspect Resend's `{data,error}` result | The Resend SDK resolves (does not throw) on HTTP rejection, so failures were silent. Now rejections/successes are logged with status/message and message id. |
+| Resend-verification buttons on `/join` and `/login` | POST to better-auth's built-in `/api/auth/send-verification-email` (no new endpoint); recovers the "user already exists, never got email" dead-end. |
+| `DEPLOY_HOOK_URL` runtime secret set on the Worker | Completes the publish→rebuild loop: approve/publish now actually triggers a Workers Builds rebuild. Verified via hook POST (200) and a follow-up deployment. |
+| Publications authors become `{name, memberSlug?}` objects | Admins either pick a lab member/alumni (linked to their `/team/{category}/{slug}` page) or enter a static name (plain text). No separate author pages, no schema migration (column stays `text` JSON; D1 was empty). New `GET /content/team` (editor role) feeds the editor autocomplete. |
+| Publication editing in the admin UI | `/admin/publications` restructured as a list + editor (mirrors the blog editor). New `GET`/`PUT`/`DELETE /content/publications(/:id)` (editor role); edits/deletes of published entries fire the rebuild hook. Verified end-to-end via admin session: create → update → publish → delete. |

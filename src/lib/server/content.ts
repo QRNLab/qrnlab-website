@@ -1,4 +1,5 @@
 import type { Db } from './db';
+import type { PublicationAuthor } from '../shared/forms';
 import { createUniqueSlug } from './slug';
 
 export interface TeamProfileData {
@@ -44,7 +45,7 @@ export interface BlogPostData {
 
 export interface PublicationData {
   title: string;
-  authors: string[];
+  authors: PublicationAuthor[];
   venue: string;
   year: number;
   type: string;

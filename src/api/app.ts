@@ -345,6 +345,17 @@ app.post('/content/blog/:id/publish', async (c) => {
 
 // --- Publications --------------------------------------------------------
 
+app.get('/content/publications', async (c) => {
+  const user = await requireRole(c, 'editor');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const db = await getDb();
+  const pubs = await db
+    .select()
+    .from(publicationEntries)
+    .orderBy(desc(publicationEntries.updatedAt));
+  return c.json({ publications: pubs });
+});
+
 app.post('/content/publications', async (c) => {
   const user = await requireRole(c, 'editor');
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
@@ -367,6 +378,38 @@ app.post('/content/publications', async (c) => {
     status: 'draft',
   });
   return c.json({ ok: true, id });
+});
+
+app.put('/content/publications/:id', async (c) => {
+  const user = await requireRole(c, 'editor');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const parsed = publicationSchema.safeParse(await safeJson(c));
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', issues: parsed.error.issues }, 400);
+  }
+  const d = parsed.data;
+  const db = await getDb();
+  const [existing] = await db
+    .select()
+    .from(publicationEntries)
+    .where(eq(publicationEntries.id, id));
+  if (!existing) return c.json({ error: 'Not found' }, 404);
+  const wasPublished = existing.status === 'published';
+  await db
+    .update(publicationEntries)
+    .set({
+      title: d.title,
+      authors: d.authors,
+      venue: d.venue,
+      year: d.year,
+      type: d.type,
+      url: d.url ?? null,
+      updatedAt: new Date(),
+    })
+    .where(eq(publicationEntries.id, id));
+  if (wasPublished) await triggerRebuild();
+  return c.json({ ok: true });
 });
 
 app.post('/content/publications/:id/publish', async (c) => {
@@ -393,6 +436,36 @@ app.post('/content/publications/:id/publish', async (c) => {
     .where(eq(publicationEntries.id, id));
   await triggerRebuild();
   return c.json({ ok: true, slug });
+});
+
+app.delete('/content/publications/:id', async (c) => {
+  const user = await requireRole(c, 'editor');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = await getDb();
+  const [pub] = await db
+    .select()
+    .from(publicationEntries)
+    .where(eq(publicationEntries.id, id));
+  if (!pub) return c.json({ error: 'Not found' }, 404);
+  await db.delete(publicationEntries).where(eq(publicationEntries.id, id));
+  if (pub.status === 'published') await triggerRebuild();
+  return c.json({ ok: true });
+});
+
+// Approved team members for editor autocompletes (e.g. publication author links).
+app.get('/content/team', async (c) => {
+  const user = await requireRole(c, 'editor');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const db = await getDb();
+  const profiles = await db
+    .select()
+    .from(memberProfiles)
+    .where(eq(memberProfiles.status, 'approved'));
+  const team = profiles
+    .filter((p) => p.slug)
+    .map((p) => ({ slug: p.slug, name: p.name, category: p.category }));
+  return c.json({ team });
 });
 // --- Latest updates ------------------------------------------------------
 

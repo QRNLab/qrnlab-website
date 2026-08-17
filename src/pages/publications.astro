@@ -3,6 +3,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import { getCollection } from "astro:content";
 
 const pubs = (await getCollection("publications")).sort((a, b) => b.data.year - a.data.year);
+const team = await getCollection("team");
+const teamById = new Map(team.map((e) => [e.id, e]));
 const groups = [
   { type: "journal", label: "Journal Papers" },
   { type: "conference", label: "Conference Attendings" },
@@ -26,7 +28,19 @@ const groups = [
               <li>
                 <p class="font-medium text-neutral-900 dark:text-neutral-100 leading-snug">{entry.data.title}</p>
                 <p class="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">
-                  {entry.data.authors.join(", ")}
+                  {entry.data.authors.map((a, i) => {
+                    const member = a.memberSlug ? teamById.get(a.memberSlug) : undefined;
+                    return (
+                      <Fragment>
+                        {i > 0 && <span>, </span>}
+                        {member ? (
+                          <a href={`/team/${member.data.category}/${member.id}`} class="text-blue-700 dark:text-blue-400 hover:underline">{a.name}</a>
+                        ) : (
+                          <span>{a.name}</span>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </p>
                 <p class="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                   {entry.data.venue}, {entry.data.year}

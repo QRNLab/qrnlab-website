@@ -1,5 +1,5 @@
 [ ]. members can write blog posts. editor reviews, can edit and publishes.
-[ ]. lab publications need author link, author page
+[x]. lab publications need author link (admins link authors to lab members/alumni; no separate author pages)
 [ ]. active projects
 [ ]. how many latest updates from blogs. choose featured?
 [ ]. image
