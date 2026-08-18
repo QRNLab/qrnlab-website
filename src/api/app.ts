@@ -20,10 +20,13 @@ import {
   resolveTeamSlug,
   resolveUpdateSlug,
 } from '../lib/server/content';
+import { isModerator } from '../lib/server/roles';
+import { autoExcerpt } from '../lib/shared/excerpt';
 import {
   blogSchema,
   profileSchema,
   publicationSchema,
+  reviewSchema,
   roleSchema,
   updateSchema,
 } from '../lib/shared/forms';
@@ -98,7 +101,7 @@ app.post('/__build', async (c) => {
     data: {
       title: p.title,
       date: p.publishedAt ?? p.createdAt,
-      excerpt: p.excerpt ?? undefined,
+      excerpt: autoExcerpt(p.body, p.excerpt),
       author: p.authorName ?? undefined,
       tags: p.tags ?? [],
     },
@@ -148,6 +151,14 @@ async function requireRole(c: any, role: 'admin' | 'editor'): Promise<any | null
   if (role === 'admin' && user.role !== 'admin') return null;
   if (role === 'editor' && user.role !== 'admin' && user.role !== 'editor') return null;
   return user;
+}
+
+// Admin, editor, or PI — can edit/review/publish content across the site.
+async function requireModerator(c: any): Promise<any | null> {
+  const user = await requireAuth(c);
+  if (!user) return null;
+  if (await isModerator(user)) return user;
+  return null;
 }
 
 async function markSubmissionReviewed(
@@ -260,15 +271,25 @@ app.post('/members', async (c) => {
 // --- Blog content --------------------------------------------------------
 
 app.get('/content/blog', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireAuth(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const db = await getDb();
-  const posts = await db.select().from(blogPosts).orderBy(blogPosts.updatedAt);
-  return c.json({ posts });
+  const moderator = await isModerator(user);
+  const posts = moderator
+    ? await db.select().from(blogPosts).orderBy(desc(blogPosts.updatedAt))
+    : await db
+        .select()
+        .from(blogPosts)
+        .where(eq(blogPosts.authorId, user.id))
+        .orderBy(desc(blogPosts.updatedAt));
+  return c.json({
+    posts,
+    me: { id: user.id, role: user.role, canModerate: moderator },
+  });
 });
 
 app.post('/content/blog', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireAuth(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const parsed = blogSchema.safeParse(await safeJson(c));
   if (!parsed.success) {
@@ -292,7 +313,7 @@ app.post('/content/blog', async (c) => {
 });
 
 app.put('/content/blog/:id', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireAuth(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const { id } = c.req.param();
   const parsed = blogSchema.safeParse(await safeJson(c));
@@ -303,32 +324,53 @@ app.put('/content/blog/:id', async (c) => {
   const db = await getDb();
   const [existing] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
   if (!existing) return c.json({ error: 'Not found' }, 404);
-  if (existing.authorId !== user.id && user.role !== 'admin') {
+  const moderator = await isModerator(user);
+  if (existing.authorId !== user.id && !moderator) {
     return c.json({ error: 'Forbidden' }, 403);
   }
-  await db
-    .update(blogPosts)
-    .set({
-      title: d.title,
-      excerpt: d.excerpt ?? null,
-      body: d.body,
-      tags: d.tags ?? [],
-      updatedAt: new Date(),
-    })
-    .where(eq(blogPosts.id, id));
+  const wasPublished = existing.status === 'published';
+  const set: any = {
+    title: d.title,
+    excerpt: d.excerpt ?? null,
+    body: d.body,
+    tags: d.tags ?? [],
+    updatedAt: new Date(),
+  };
+  // A non-moderator owner editing a live post takes it offline until it is
+  // re-reviewed and republished.
+  if (wasPublished && !moderator) set.status = 'draft';
+  await db.update(blogPosts).set(set).where(eq(blogPosts.id, id));
+  if (wasPublished) await triggerRebuild();
   return c.json({ ok: true });
 });
 
-app.post('/content/blog/:id/publish', async (c) => {
-  const user = await requireRole(c, 'editor');
+app.post('/content/blog/:id/submit', async (c) => {
+  const user = await requireAuth(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const { id } = c.req.param();
   const db = await getDb();
   const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
   if (!post) return c.json({ error: 'Not found' }, 404);
-  if (post.authorId !== user.id && user.role !== 'admin') {
+  const moderator = await isModerator(user);
+  if (post.authorId !== user.id && !moderator) {
     return c.json({ error: 'Forbidden' }, 403);
   }
+  if (post.status === 'published') return c.json({ error: 'Already published' }, 400);
+  if (post.status === 'submitted') return c.json({ error: 'Already submitted for review' }, 400);
+  await db
+    .update(blogPosts)
+    .set({ status: 'submitted', updatedAt: new Date() })
+    .where(eq(blogPosts.id, id));
+  return c.json({ ok: true });
+});
+
+app.post('/content/blog/:id/publish', async (c) => {
+  const user = await requireModerator(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = await getDb();
+  const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+  if (!post) return c.json({ error: 'Not found' }, 404);
   const now = new Date();
   const slug = await resolveBlogSlug(db, {
     slug: post.status === 'published' ? post.slug : undefined,
@@ -345,6 +387,7 @@ app.post('/content/blog/:id/publish', async (c) => {
       status: 'published',
       slug,
       publishedAt: post.publishedAt ?? now,
+      reviewNote: null,
       updatedAt: now,
     })
     .where(eq(blogPosts.id, id));
@@ -352,10 +395,51 @@ app.post('/content/blog/:id/publish', async (c) => {
   return c.json({ ok: true, slug });
 });
 
+app.post('/content/blog/:id/reject', async (c) => {
+  const user = await requireModerator(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const parsed = reviewSchema.safeParse(await safeJson(c));
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', issues: parsed.error.issues }, 400);
+  }
+  const db = await getDb();
+  const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+  if (!post) return c.json({ error: 'Not found' }, 404);
+  if (post.status !== 'submitted') {
+    return c.json({ error: 'Only submitted posts can be rejected' }, 400);
+  }
+  await db
+    .update(blogPosts)
+    .set({
+      status: 'rejected',
+      reviewNote: parsed.data.note ?? null,
+      updatedAt: new Date(),
+    })
+    .where(eq(blogPosts.id, id));
+  return c.json({ ok: true });
+});
+
+app.delete('/content/blog/:id', async (c) => {
+  const user = await requireAuth(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = await getDb();
+  const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+  if (!post) return c.json({ error: 'Not found' }, 404);
+  const moderator = await isModerator(user);
+  if (!moderator && (post.authorId !== user.id || post.status === 'published')) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+  await db.delete(blogPosts).where(eq(blogPosts.id, id));
+  if (post.status === 'published') await triggerRebuild();
+  return c.json({ ok: true });
+});
+
 // --- Publications --------------------------------------------------------
 
 app.get('/content/publications', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireModerator(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const db = await getDb();
   const pubs = await db
@@ -366,7 +450,7 @@ app.get('/content/publications', async (c) => {
 });
 
 app.post('/content/publications', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireModerator(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const parsed = publicationSchema.safeParse(await safeJson(c));
   if (!parsed.success) {
@@ -390,7 +474,7 @@ app.post('/content/publications', async (c) => {
 });
 
 app.put('/content/publications/:id', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireModerator(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const { id } = c.req.param();
   const parsed = publicationSchema.safeParse(await safeJson(c));
@@ -422,7 +506,7 @@ app.put('/content/publications/:id', async (c) => {
 });
 
 app.post('/content/publications/:id/publish', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireModerator(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const { id } = c.req.param();
   const db = await getDb();
@@ -448,7 +532,7 @@ app.post('/content/publications/:id/publish', async (c) => {
 });
 
 app.delete('/content/publications/:id', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireModerator(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const { id } = c.req.param();
   const db = await getDb();
@@ -464,7 +548,7 @@ app.delete('/content/publications/:id', async (c) => {
 
 // Approved team members for editor autocompletes (e.g. publication author links).
 app.get('/content/team', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireModerator(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const db = await getDb();
   const profiles = await db
@@ -479,7 +563,7 @@ app.get('/content/team', async (c) => {
 // --- Latest updates ------------------------------------------------------
 
 app.get('/content/updates', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireModerator(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const db = await getDb();
   const updates = await db.select().from(newsUpdates).orderBy(desc(newsUpdates.date), desc(newsUpdates.createdAt));
@@ -487,7 +571,7 @@ app.get('/content/updates', async (c) => {
 });
 
 app.post('/content/updates', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireModerator(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const parsed = updateSchema.safeParse(await safeJson(c));
   if (!parsed.success) {
@@ -509,7 +593,7 @@ app.post('/content/updates', async (c) => {
 });
 
 app.delete('/content/updates/:id', async (c) => {
-  const user = await requireRole(c, 'editor');
+  const user = await requireModerator(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const { id } = c.req.param();
   const db = await getDb();

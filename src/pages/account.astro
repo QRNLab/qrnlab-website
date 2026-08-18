@@ -34,12 +34,20 @@ const statusStyles: Record<string, string> = {
         Signed in as <span class="font-medium text-neutral-700 dark:text-neutral-300">{session?.user.email}</span>
       </p>
     </div>
-    <a
-      href="/account/edit"
-      class="rounded bg-[#0b0d39] dark:bg-[#f4f2c7] px-5 py-2 text-sm font-medium text-white dark:text-[#0b0d39] hover:opacity-90 transition-opacity"
-    >
-      Edit profile
-    </a>
+    <div class="flex flex-wrap items-center gap-3">
+      <a
+        href="/account/posts"
+        class="rounded border border-neutral-300 dark:border-neutral-600 px-5 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+      >
+        My posts
+      </a>
+      <a
+        href="/account/edit"
+        class="rounded bg-[#0b0d39] dark:bg-[#f4f2c7] px-5 py-2 text-sm font-medium text-white dark:text-[#0b0d39] hover:opacity-90 transition-opacity"
+      >
+        Edit profile
+      </a>
+    </div>
   </div>
 
   {!p && (

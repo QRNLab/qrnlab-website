@@ -2,6 +2,7 @@ import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Loader } from 'astro/loaders';
 import type { PublicationAuthor } from '../lib/shared/forms';
+import { autoExcerpt } from '../lib/shared/excerpt';
 
 interface BuildEntry {
   id: string;
@@ -173,7 +174,7 @@ async function tryLoadLocalD1(
       data: {
         title: p.title,
         date: p.publishedAt ?? p.createdAt,
-        excerpt: p.excerpt ?? undefined,
+        excerpt: autoExcerpt(p.body, p.excerpt),
         author: p.authorName ?? undefined,
         tags: (parseJson(p.tags) as string[]) ?? [],
       },

@@ -1,5 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getAuth } from './lib/server/auth';
+import { isModerator } from './lib/server/roles';
 
 async function getSessionSafe(context: any): Promise<any> {
   try {
@@ -35,7 +36,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
       path === '/admin/publications' || path.startsWith('/admin/publications/') ||
       path === '/admin/updates' || path.startsWith('/admin/updates/') ||
       path === '/admin/media' || path.startsWith('/admin/media/');
-    const allowed = role === 'admin' || (role === 'editor' && isEditorPage);
+    // Admin can reach every /admin page; editor pages (content editors) are
+    // also open to editors and PIs.
+    const moderator = await isModerator(session.user);
+    const allowed = role === 'admin' || (isEditorPage && moderator);
     if (!allowed) {
       return context.redirect('/account');
     }

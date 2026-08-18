@@ -4,14 +4,18 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 export const prerender = false;
 ---
 
-<BaseLayout title="Blog editor" description="Write, review and publish blog posts">
+<BaseLayout title="My posts" description="Write and manage your blog posts">
   <div class="flex items-center justify-between gap-4">
     <div>
-      <h1 class="text-3xl font-semibold tracking-tight">Blog editor</h1>
-      <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Review and publish member posts, or write your own. Submitted posts appear at the top of the queue.</p>
+      <h1 class="text-3xl font-semibold tracking-tight">My posts</h1>
+      <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Write a post, then submit it for review. An editor or the PI publishes it after review.</p>
     </div>
     <button id="new-post" class="shrink-0 rounded bg-[#0b0d39] dark:bg-[#f4f2c7] px-4 py-2 text-sm font-medium text-white dark:text-[#0b0d39] hover:opacity-90 transition-opacity">New post</button>
   </div>
+
+  <p id="unpublish-note" class="hidden mt-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+    Editing a published post takes it offline until it is reviewed and republished.
+  </p>
 
   <div id="list" class="mt-8"></div>
 
@@ -51,8 +55,7 @@ export const prerender = false;
       <div class="flex flex-wrap gap-2">
         <button type="button" id="preview-toggle" class="rounded border border-neutral-300 dark:border-neutral-600 px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Preview</button>
         <button type="submit" class="rounded bg-[#0b0d39] dark:bg-[#f4f2c7] px-4 py-2 text-sm font-medium text-white dark:text-[#0b0d39] hover:opacity-90 transition-opacity">Save draft</button>
-        <button type="button" id="publish-btn" class="rounded bg-green-700 dark:bg-green-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity">Publish</button>
-        <button type="button" id="reject-btn" class="rounded border border-red-300 dark:border-red-700 px-4 py-2 text-sm text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">Reject</button>
+        <button type="button" id="submit-btn" class="rounded bg-green-700 dark:bg-green-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity">Submit for review</button>
         <button type="button" id="cancel-btn" class="rounded border border-neutral-300 dark:border-neutral-600 px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
       </div>
 
@@ -72,6 +75,7 @@ export const prerender = false;
   const editorEl = document.getElementById("editor")!;
   const editorTitle = document.getElementById("editor-title")!;
   const form = document.getElementById("post-form") as HTMLFormElement;
+  const unpublishNote = document.getElementById("unpublish-note")!;
 
   const formController = bindPostForm({
     form,
@@ -92,7 +96,7 @@ export const prerender = false;
   });
 
   let posts: BlogPost[] = [];
-  let me: Me = { id: "", role: "member", canModerate: true };
+  let me: Me = { id: "", role: "member", canModerate: false };
 
   async function load() {
     const data = await api<{ posts: BlogPost[]; me: Me }>("/content/blog");
@@ -102,43 +106,28 @@ export const prerender = false;
       container: listEl,
       posts,
       me,
-      emptyText: "No posts yet.",
+      emptyText: "No posts yet. Write your first post!",
       actions: {
         edit: (post) => {
           formController.openEdit(post);
-          document.getElementById("reject-btn")!.classList.toggle("hidden", post.status !== "submitted");
+          unpublishNote.classList.toggle("hidden", post.status !== "published");
           window.scrollTo({ top: editorEl.offsetTop - 80, behavior: "smooth" });
         },
-        submit: () => {},
-        publish: (post) => publishPost(post.id),
-        reject: (post) => rejectPost(post),
+        submit: (post) => submitPost(post.id),
+        publish: () => {},
+        reject: () => {},
         remove: (post) => deletePost(post),
         viewUrl: (post) => (post.status === "published" ? `/blog/${post.slug}` : null),
       },
     });
   }
 
-  async function publishPost(id: string) {
+  async function submitPost(id: string) {
     try {
-      const data = await api<{ url?: string }>(`/content/blog/${id}/publish`, { method: "POST" });
-      formController.setMessage(data.url ? `Published — view at /blog/${data.url}` : "Published.");
+      await api(`/content/blog/${id}/submit`, { method: "POST" });
       await load();
     } catch (err: any) {
-      formController.setMessage(err.message ?? "Publish failed.", true);
-    }
-  }
-
-  async function rejectPost(post: BlogPost) {
-    const note = window.prompt(`Reject "${post.title}" — reason for the author (optional):`) ?? "";
-    try {
-      await api(`/content/blog/${post.id}/reject`, {
-        method: "POST",
-        body: JSON.stringify({ note: note.trim() || undefined }),
-      });
-      formController.setMessage("Post rejected.");
-      await load();
-    } catch (err: any) {
-      formController.setMessage(err.message ?? "Reject failed.", true);
+      formController.setMessage(err.message ?? "Submit failed.", true);
     }
   }
 
@@ -153,27 +142,22 @@ export const prerender = false;
   }
 
   document.getElementById("new-post")!.addEventListener("click", () => {
-    document.getElementById("reject-btn")!.classList.add("hidden");
+    unpublishNote.classList.add("hidden");
     formController.openNew();
     window.scrollTo({ top: editorEl.offsetTop - 80, behavior: "smooth" });
   });
 
   document.getElementById("cancel-btn")!.addEventListener("click", () => {
     editorEl.classList.add("hidden");
+    unpublishNote.classList.add("hidden");
   });
 
-  document.getElementById("publish-btn")!.addEventListener("click", async () => {
+  document.getElementById("submit-btn")!.addEventListener("click", async () => {
     if (!formController.getEditingId()) {
       await formController.saveDraft();
     }
     const id = formController.getEditingId();
-    if (id) await publishPost(id);
-  });
-
-  document.getElementById("reject-btn")!.addEventListener("click", async () => {
-    const id = formController.getEditingId();
-    const post = posts.find((p) => p.id === id);
-    if (post) await rejectPost(post);
+    if (id) await submitPost(id);
   });
 
   load();

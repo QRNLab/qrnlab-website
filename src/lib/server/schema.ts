@@ -118,6 +118,7 @@ export const blogPosts = sqliteTable('blog_posts', {
   authorName: text('authorName'),
   tags: text('tags', { mode: 'json' }).$type<string[]>().default([]),
   status: text('status').notNull().default('draft'),
+  reviewNote: text('reviewNote'),
   createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
   updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
   publishedAt: integer('publishedAt', { mode: 'timestamp_ms' }),
