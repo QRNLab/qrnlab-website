@@ -9,10 +9,17 @@ export interface Props {
 const { title, description } = Astro.props;
 const currentPath = Astro.url.pathname;
 
+function normalizePath(path: string): string {
+  if (path.length > 1 && path.endsWith("/")) return path.slice(0, -1);
+  return path;
+}
+
 function isActive(href: string): boolean {
-  if (href === "/team") return currentPath === href || currentPath.startsWith("/team/");
-  if (href === "/blog") return currentPath === href || currentPath.startsWith("/blog/");
-  return currentPath === href;
+  const path = normalizePath(currentPath);
+  if (href === "/") return path === "/";
+  if (href === "/team") return path === href || path.startsWith("/team/");
+  if (href === "/blog") return path === href || path.startsWith("/blog/");
+  return path === href;
 }
 
 const navItems = [

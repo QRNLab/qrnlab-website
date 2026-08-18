@@ -2,11 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Avatar from "../components/Avatar.astro";
 
-const groupPhotos = [
-  "/images/affiliates/Group Affil.jpg",
-  "/images/affiliates/group Affil 2.jpg",
-  "/images/affiliates/beach Affil.jpg",
-];
+const media = (key: string) => `/media/uploads/page/affiliates/${key}`;
 
 const affiliates = [
   {
@@ -18,7 +14,12 @@ const affiliates = [
       { label: "Google Scholar", url: "https://scholar.google.com/citations?user=j7rUgKcAAAAJ" },
     ],
     bio: "Prof. Nakahiro Yasuda is a researcher in radiological sciences at the Research Institute of Nuclear Engineering (RINE), University of Fukui. His expertise includes heavy ion radiation biology, CR-39 nuclear track detectors, and space radiation dosimetry. He was the PhD supervisor of Prof. Quazi Muhammad Rashed Nizam at the University of Fukui, and they continue to collaborate on radiation measurement and environmental radioactivity research.",
-    photos: ["/images/affiliates/Nakahiro QRN.jpg"],
+    photos: [
+      media("nakahiro-qrn.jpg"),
+      media("group-affil.jpg"),
+      media("group-affil-2.jpg"),
+      media("beach-affil.jpg"),
+    ],
     publications: [
       "An overview of background radiation level and spatial distribution of NORM in Bangladesh. Journal of Radiological Protection, 46, 011002, 2026.",
     ],
@@ -32,7 +33,7 @@ const affiliates = [
       { label: "Google Scholar", url: "https://scholar.google.com/citations?user=QNu2BHgAAAAJ" },
     ],
     bio: "Prof. Lembit Sihver is an expert in Monte Carlo simulations of radiation transport, heavy ion interactions, space radiation shielding, and radiation dosimetry. He is a core developer of the PHITS code and has extensive experience in radiation protection for astronauts and heavy ion cancer therapy. He has collaborated with QRNLab on Monte Carlo calculations for heavy ion therapy applications.",
-    photos: ["/images/affiliates/Prof. L. Sihver.jpg"],
+    photos: [media("lembit-sihver.jpg"), media("group-affil.jpg")],
     publications: [
       "Monte Carlo calculations of target fragments from helium and carbon ion interactions with water. Zeitschrift fur Medizinische Physik, 36(1), 26-35, 2026.",
     ],
@@ -48,7 +49,7 @@ const affiliates = [
       { label: "ORCID", url: "https://orcid.org/0000-0003-3772-294X" },
     ],
     bio: "Prof. Mayeen Uddin Khandaker, Ph.D. (Korea), is a Professor of Applied Physics and Radiation Technologies at Sunway University, Malaysia. He has published over 565 research papers with a total citation of over 10,000, and is listed among the top 2% highly cited researchers by Elsevier-Stanford University. His research interests include medical physics, radiation shielding, environmental radioactivity, and nuclear energy. He maintains ongoing collaborative research with QRNLab in the fields of radiation physics and environmental radioactivity assessment.",
-    photos: ["/images/affiliates/mayeen_uddin_khandaker.jpg"],
+    photos: [media("mayeen-uddin-khandaker.jpg")],
     publications: [],
   },
   {
@@ -115,14 +116,6 @@ const affiliates = [
             <Avatar name={aff.name} size={96} />
           </div>
         )}
-
-        {groupPhotos.map((src) => (
-          <img
-            src={src}
-            alt="QRNLab collaboration"
-            class="h-24 w-32 sm:h-40 sm:w-56 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700"
-          />
-        ))}
       </div>
 
       <p class="mt-5 text-neutral-700 dark:text-neutral-300 leading-relaxed max-w-3xl">{aff.bio}</p>
