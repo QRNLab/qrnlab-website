@@ -75,3 +75,11 @@ export const updateSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD'),
   text: z.string().trim().min(1).max(500),
 });
+
+export const educationSchema = z.object({
+  section: z.enum(['lecture-notes', 'presentations', 'posters']).default('lecture-notes'),
+  heading: z.string().trim().min(1).max(300),
+  description: z.string().max(5000).optional(),
+  links: z.array(linkItem).max(20).optional(),
+  youtubeLinks: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
+});

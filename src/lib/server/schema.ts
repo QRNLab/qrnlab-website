@@ -166,6 +166,19 @@ export const profileSubmissions = sqliteTable('profile_submissions', {
   reviewedBy: text('reviewedBy'),
 });
 
+export const educationEntries = sqliteTable('education_entries', {
+  id: text('id').primaryKey(),
+  section: text('section').notNull().default('lecture-notes'),
+  heading: text('heading').notNull(),
+  description: text('description'),
+  links: text('links', { mode: 'json' }).$type<{ label: string; url: string }[]>().default([]),
+  youtubeLinks: text('youtubeLinks', { mode: 'json' }).$type<string[]>().default([]),
+  sortOrder: integer('sortOrder').notNull().default(0),
+  status: text('status').notNull().default('draft'),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+});
+
 export const mediaAssets = sqliteTable('media_assets', {
   id: text('id').primaryKey(),
   key: text('key').notNull().unique(),
@@ -196,4 +209,5 @@ export const schema = {
   profileSubmissions,
   mediaAssets,
   newsUpdates,
+  educationEntries,
 };

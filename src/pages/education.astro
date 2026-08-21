@@ -1,22 +1,77 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import EducationEntry from "../components/EducationEntry.astro";
+import { getCollection } from "astro:content";
+
+const entries = await getCollection("education");
+
+const sections = [
+  { key: "lecture-notes", label: "Lecture Notes" },
+  { key: "presentations", label: "Presentations" },
+  { key: "posters", label: "Posters" },
+] as const;
+
+const PREVIEW_COUNT = 2;
 ---
 
 <BaseLayout title="Education" description="QRNLab education and outreach resources">
   <h1 class="text-3xl font-semibold tracking-tight">Education &amp; Outreach</h1>
 
-  <section class="mt-8">
-    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">Lecture Notes</h2>
-    <p class="mt-4 text-sm text-neutral-500 dark:text-neutral-400 italic">No lecture notes uploaded yet.</p>
-  </section>
+  {sections.map((section) => {
+    const items = entries.filter((e) => e.data.section === section.key);
+    const visible = items.slice(0, PREVIEW_COUNT);
+    const hidden = items.slice(PREVIEW_COUNT);
+    return (
+      <section data-education-section class="mt-12 first:mt-8">
+        <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">
+          {section.label}
+        </h2>
 
-  <section class="mt-12">
-    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">Presentation Slides</h2>
-    <p class="mt-4 text-sm text-neutral-500 dark:text-neutral-400 italic">No presentation slides uploaded yet.</p>
-  </section>
+        {items.length === 0 ? (
+          <p class="mt-4 text-sm text-neutral-500 dark:text-neutral-400 italic">No {section.label.toLowerCase()} added yet.</p>
+        ) : (
+          <>
+            <ul class="mt-4 space-y-4 max-w-3xl">
+              {visible.map((entry) => <EducationEntry entry={entry} />)}
+            </ul>
 
-  <section class="mt-12">
-    <h2 class="text-2xl font-medium tracking-tight border-b border-neutral-200 dark:border-neutral-700 pb-2">Workshops</h2>
-    <p class="mt-4 text-sm text-neutral-500 dark:text-neutral-400 italic">No workshops listed yet.</p>
-  </section>
+            {hidden.length > 0 && (
+              <>
+                <ul data-education-more class="mt-4 space-y-4 max-w-3xl" hidden>
+                  {hidden.map((entry) => <EducationEntry entry={entry} />)}
+                </ul>
+                <button
+                  type="button"
+                  data-education-toggle
+                  aria-expanded="false"
+                  class="mt-5 inline-flex items-center gap-2 rounded border border-neutral-300 dark:border-neutral-600 px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                >
+                  <span data-education-label>Show all ({hidden.length} more)</span>
+                  <svg data-education-chevron xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </section>
+    );
+  })}
 </BaseLayout>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-education-section]").forEach((section) => {
+    const toggle = section.querySelector<HTMLButtonElement>("[data-education-toggle]");
+    if (!toggle) return;
+    const more = section.querySelector<HTMLElement>("[data-education-more]")!;
+    const label = section.querySelector<HTMLElement>("[data-education-label]")!;
+    const chevron = section.querySelector<SVGElement>("[data-education-chevron]")!;
+    toggle.addEventListener("click", () => {
+      const open = toggle.getAttribute("aria-expanded") === "true";
+      const next = !open;
+      toggle.setAttribute("aria-expanded", String(next));
+      more.hidden = !next;
+      label.textContent = next ? "Show less" : "Show all";
+      chevron.classList.toggle("rotate-180", next);
+    });
+  });
+</script>

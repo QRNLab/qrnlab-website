@@ -75,4 +75,18 @@ const updates = defineCollection({
   }),
 });
 
-export const collections = { team, blog, publications, projects, updates };
+const education = defineCollection({
+  loader: d1Loader('education'),
+  schema: z.object({
+    section: z.enum(['lecture-notes', 'presentations', 'posters']),
+    heading: z.string(),
+    description: z.string().optional(),
+    links: z.array(z.object({
+      label: z.string(),
+      url: z.string(),
+    })).optional(),
+    youtubeLinks: z.array(z.string()).optional(),
+  }),
+});
+
+export const collections = { team, blog, publications, projects, updates, education };

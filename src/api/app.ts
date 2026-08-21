@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import { getAuth } from '../lib/server/auth';
 import { getDb } from '../lib/server/db';
 import { triggerRebuild } from '../lib/server/rebuild';
 import { deleteImage, isAllowedMime, MAX_UPLOAD_BYTES, mediaUrl, uploadImage } from '../lib/server/media';
 import {
   blogPosts,
+  educationEntries,
   mediaAssets,
   memberProfiles,
   newsUpdates,
@@ -24,6 +25,7 @@ import { isModerator } from '../lib/server/roles';
 import { autoExcerpt } from '../lib/shared/excerpt';
 import {
   blogSchema,
+  educationSchema,
   profileSchema,
   publicationSchema,
   reviewSchema,
@@ -71,6 +73,12 @@ app.post('/__build', async (c) => {
     .where(eq(publicationEntries.status, 'published'));
 
   const updates = await db.select().from(newsUpdates);
+
+  const education = await db
+    .select()
+    .from(educationEntries)
+    .where(eq(educationEntries.status, 'published'))
+    .orderBy(asc(educationEntries.section), asc(educationEntries.sortOrder));
 
   const team = members.map((m) => ({
     id: m.slug ?? m.userId,
@@ -128,7 +136,18 @@ app.post('/__build', async (c) => {
     body: u.text,
   }));
 
-  return c.json({ team, blog, publications, updates: updatesEntries });
+  const educationEntriesOut = education.map((e) => ({
+    id: e.id,
+    data: {
+      section: e.section,
+      heading: e.heading,
+      description: e.description ?? undefined,
+      links: e.links ?? [],
+      youtubeLinks: e.youtubeLinks ?? [],
+    },
+  }));
+
+  return c.json({ team, blog, publications, updates: updatesEntries, education: educationEntriesOut });
 });
 
 async function safeJson(c: any): Promise<any> {
@@ -601,6 +620,156 @@ app.delete('/content/updates/:id', async (c) => {
   if (!update) return c.json({ error: 'Not found' }, 404);
   await db.delete(newsUpdates).where(eq(newsUpdates.id, id));
   await triggerRebuild();
+  return c.json({ ok: true });
+});
+
+// --- Education -----------------------------------------------------------
+
+app.get('/content/education', async (c) => {
+  const user = await requireModerator(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const db = await getDb();
+  const entries = await db
+    .select()
+    .from(educationEntries)
+    .orderBy(asc(educationEntries.section), asc(educationEntries.sortOrder));
+  return c.json({ entries });
+});
+
+app.post('/content/education', async (c) => {
+  const user = await requireModerator(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const parsed = educationSchema.safeParse(await safeJson(c));
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', issues: parsed.error.issues }, 400);
+  }
+  const d = parsed.data;
+  const id = crypto.randomUUID();
+  const db = await getDb();
+  const [last] = await db
+    .select({ max: educationEntries.sortOrder })
+    .from(educationEntries)
+    .where(eq(educationEntries.section, d.section))
+    .orderBy(desc(educationEntries.sortOrder))
+    .limit(1);
+  await db.insert(educationEntries).values({
+    id,
+    section: d.section,
+    heading: d.heading,
+    description: d.description ?? null,
+    links: d.links ?? [],
+    youtubeLinks: d.youtubeLinks ?? [],
+    sortOrder: (last?.max ?? -1) + 1,
+    status: 'draft',
+  });
+  return c.json({ ok: true, id });
+});
+
+app.put('/content/education/:id', async (c) => {
+  const user = await requireModerator(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const parsed = educationSchema.safeParse(await safeJson(c));
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', issues: parsed.error.issues }, 400);
+  }
+  const d = parsed.data;
+  const db = await getDb();
+  const [existing] = await db
+    .select()
+    .from(educationEntries)
+    .where(eq(educationEntries.id, id));
+  if (!existing) return c.json({ error: 'Not found' }, 404);
+  const wasPublished = existing.status === 'published';
+  // Keep the section's ordering independent of edits; moving sections keeps
+  // the existing sortOrder (may collide — reorder handles normalisation).
+  await db
+    .update(educationEntries)
+    .set({
+      section: d.section,
+      heading: d.heading,
+      description: d.description ?? null,
+      links: d.links ?? [],
+      youtubeLinks: d.youtubeLinks ?? [],
+      updatedAt: new Date(),
+    })
+    .where(eq(educationEntries.id, id));
+  if (wasPublished) await triggerRebuild();
+  return c.json({ ok: true });
+});
+
+app.post('/content/education/:id/publish', async (c) => {
+  const user = await requireModerator(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = await getDb();
+  const [entry] = await db
+    .select()
+    .from(educationEntries)
+    .where(eq(educationEntries.id, id));
+  if (!entry) return c.json({ error: 'Not found' }, 404);
+  await db
+    .update(educationEntries)
+    .set({ status: 'published', updatedAt: new Date() })
+    .where(eq(educationEntries.id, id));
+  await triggerRebuild();
+  return c.json({ ok: true });
+});
+
+app.post('/content/education/:id/move', async (c) => {
+  const user = await requireModerator(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const parsed = z
+    .object({ direction: z.enum(['up', 'down']) })
+    .safeParse(await safeJson(c));
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', issues: parsed.error.issues }, 400);
+  }
+  const db = await getDb();
+  const [entry] = await db
+    .select()
+    .from(educationEntries)
+    .where(eq(educationEntries.id, id));
+  if (!entry) return c.json({ error: 'Not found' }, 404);
+
+  const neighbors = await db
+    .select()
+    .from(educationEntries)
+    .where(eq(educationEntries.section, entry.section))
+    .orderBy(asc(educationEntries.sortOrder));
+  const idx = neighbors.findIndex((n) => n.id === id);
+  const swapIdx = parsed.data.direction === 'up' ? idx - 1 : idx + 1;
+  if (idx === -1 || swapIdx < 0 || swapIdx >= neighbors.length) {
+    return c.json({ error: 'Cannot move further' }, 400);
+  }
+  const other = neighbors[swapIdx];
+  // Re-normalise sortOrder for the two swapped rows to avoid collisions.
+  const myOrder = entry.sortOrder;
+  await db
+    .update(educationEntries)
+    .set({ sortOrder: other.sortOrder, updatedAt: new Date() })
+    .where(eq(educationEntries.id, id));
+  await db
+    .update(educationEntries)
+    .set({ sortOrder: myOrder, updatedAt: new Date() })
+    .where(eq(educationEntries.id, other.id));
+  if (entry.status === 'published' || other.status === 'published') await triggerRebuild();
+  return c.json({ ok: true });
+});
+
+app.delete('/content/education/:id', async (c) => {
+  const user = await requireModerator(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = await getDb();
+  const [entry] = await db
+    .select()
+    .from(educationEntries)
+    .where(eq(educationEntries.id, id));
+  if (!entry) return c.json({ error: 'Not found' }, 404);
+  await db.delete(educationEntries).where(eq(educationEntries.id, id));
+  if (entry.status === 'published') await triggerRebuild();
   return c.json({ ok: true });
 });
 

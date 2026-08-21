@@ -22,6 +22,13 @@
       "when": 1787078238200,
       "tag": "0002_peaceful_lizard",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787330804972,
+      "tag": "0003_glorious_titanium_man",
+      "breakpoints": true
     }
   ]
 }

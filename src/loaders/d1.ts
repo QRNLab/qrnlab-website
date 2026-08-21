@@ -15,6 +15,7 @@ interface BuildPayload {
   blog: BuildEntry[];
   publications: BuildEntry[];
   updates: BuildEntry[];
+  education: BuildEntry[];
 }
 
 const cacheKey = Symbol.for('qrnlab-build-payload');
@@ -34,7 +35,7 @@ const cacheKey = Symbol.for('qrnlab-build-payload');
  * Unset/absent credentials or an unreachable endpoint → the collection loads
  * empty (with a warning) so builds still pass without secrets.
  */
-export function d1Loader(collection: 'team' | 'blog' | 'publications' | 'updates'): Loader {
+export function d1Loader(collection: 'team' | 'blog' | 'publications' | 'updates' | 'education'): Loader {
   return {
     name: `d1-${collection}`,
     load: async ({ store, logger, renderMarkdown, parseData }) => {
@@ -144,6 +145,9 @@ async function tryLoadLocalD1(
     const posts = db.prepare("SELECT * FROM blog_posts WHERE status = 'published'").all();
     const pubs = db.prepare("SELECT * FROM publications WHERE status = 'published'").all();
     const updates = db.prepare('SELECT * FROM news_updates').all();
+    const education = db
+      .prepare("SELECT * FROM education_entries WHERE status = 'published' ORDER BY section, sortOrder")
+      .all();
 
     const team = members.map((m: any) => ({
       id: m.slug ?? m.userId,
@@ -199,7 +203,18 @@ async function tryLoadLocalD1(
       body: u.text,
     }));
 
-    return { team, blog, publications, updates: updatesEntries };
+    const educationEntries = education.map((e: any) => ({
+      id: e.id,
+      data: {
+        section: e.section,
+        heading: e.heading,
+        description: e.description ?? undefined,
+        links: (parseJson(e.links) as unknown[]) ?? [],
+        youtubeLinks: (parseJson(e.youtubeLinks) as string[]) ?? [],
+      },
+    }));
+
+    return { team, blog, publications, updates: updatesEntries, education: educationEntries };
   } finally {
     db.close();
   }

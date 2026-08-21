@@ -34,6 +34,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const isEditorPage =
       path === '/admin/blog' || path.startsWith('/admin/blog/') ||
       path === '/admin/publications' || path.startsWith('/admin/publications/') ||
+      path === '/admin/education' || path.startsWith('/admin/education/') ||
       path === '/admin/updates' || path.startsWith('/admin/updates/') ||
       path === '/admin/media' || path.startsWith('/admin/media/');
     // Admin can reach every /admin page; editor pages (content editors) are
