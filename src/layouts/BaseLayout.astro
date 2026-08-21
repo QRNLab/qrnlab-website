@@ -46,8 +46,8 @@ const navItems = [
     <title>{title} | QRNLab</title>
     <script is:inline>
       (function () {
-        var stored = localStorage.getItem("theme");
-        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const stored = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         if (stored === "dark" || (!stored && prefersDark)) {
           document.documentElement.classList.add("dark");
         }
@@ -116,20 +116,20 @@ const navItems = [
     </footer>
     <script is:inline>
       function toggleDarkMode() {
-        var html = document.documentElement;
+        const html = document.documentElement;
         html.classList.toggle("dark");
         localStorage.setItem("theme", html.classList.contains("dark") ? "dark" : "light");
       }
-      var mobileNavAnimation = null;
+      let mobileNavAnimation = null;
       function toggleMobileNav() {
-        var el = document.getElementById("nav-links");
+        const el = document.getElementById("nav-links");
         if (!el) return;
         if (mobileNavAnimation) {
           mobileNavAnimation.cancel();
           mobileNavAnimation = null;
         }
-        var closed = el.classList.contains("hidden");
-        var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const closed = el.classList.contains("hidden");
+        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         if (closed) {
           el.classList.remove("hidden");
           if (reduced) return;
@@ -148,7 +148,7 @@ const navItems = [
             ],
             { duration: 120, easing: "ease-in" }
           );
-          mobileNavAnimation.onfinish = function () {
+          mobileNavAnimation.onfinish = () => {
             el.classList.add("hidden");
           };
         } else {

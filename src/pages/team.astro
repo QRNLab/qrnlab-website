@@ -97,14 +97,14 @@ const SHOW_INITIAL = 8;
 
 <script is:inline>
   function showMore(id) {
-    var container = document.getElementById(id);
-    var hidden = container.querySelectorAll(".hidden[data-index]");
-    hidden.forEach(function (el, i) {
+    const container = document.getElementById(id);
+    const hidden = container.querySelectorAll(".hidden[data-index]");
+    hidden.forEach((el, i) => {
       el.classList.remove("hidden");
       el.style.animation = "fadeInUp 0.3s ease forwards";
       el.style.animationDelay = (i * 80) + "ms";
     });
-    var btn = document.getElementById("show-more-" + id);
+    const btn = document.getElementById("show-more-" + id);
     if (btn) btn.remove();
   }
 </script>
