@@ -211,6 +211,7 @@ async function tryLoadLocalD1(
         description: e.description ?? undefined,
         links: (parseJson(e.links) as unknown[]) ?? [],
         youtubeLinks: (parseJson(e.youtubeLinks) as string[]) ?? [],
+        images: (parseJson(e.images) as string[]) ?? [],
       },
     }));
 

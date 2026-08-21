@@ -82,4 +82,5 @@ export const educationSchema = z.object({
   description: z.string().max(5000).optional(),
   links: z.array(linkItem).max(20).optional(),
   youtubeLinks: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
+  images: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
 });

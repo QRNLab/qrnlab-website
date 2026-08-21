@@ -1,0 +1,1 @@
+ALTER TABLE `education_entries` ADD `images` text DEFAULT '[]';

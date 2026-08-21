@@ -173,6 +173,7 @@ export const educationEntries = sqliteTable('education_entries', {
   description: text('description'),
   links: text('links', { mode: 'json' }).$type<{ label: string; url: string }[]>().default([]),
   youtubeLinks: text('youtubeLinks', { mode: 'json' }).$type<string[]>().default([]),
+  images: text('images', { mode: 'json' }).$type<string[]>().default([]),
   sortOrder: integer('sortOrder').notNull().default(0),
   status: text('status').notNull().default('draft'),
   createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),

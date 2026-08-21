@@ -37,7 +37,7 @@ export function mediaUrl(key: string): string {
  * R2 object key (immutable, so safe for long-lived CDN caching).
  */
 export async function uploadImage(opts: {
-  purpose: 'avatar' | 'blog' | 'page';
+  purpose: 'avatar' | 'blog' | 'page' | 'education';
   filename: string;
   mime: string;
   bytes: ArrayBuffer;

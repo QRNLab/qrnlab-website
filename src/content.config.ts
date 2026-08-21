@@ -86,6 +86,7 @@ const education = defineCollection({
       url: z.string(),
     })).optional(),
     youtubeLinks: z.array(z.string()).optional(),
+    images: z.array(z.string()).optional(),
   }),
 });
 

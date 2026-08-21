@@ -65,6 +65,20 @@ export const prerender = false;
         </button>
       </div>
 
+      <div>
+        <span class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Images <span class="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></span>
+        <div id="images-list" class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
+        <div class="mt-2 flex items-center gap-3">
+          <button type="button" id="image-add"
+            class="inline-flex items-center gap-1.5 rounded border border-neutral-300 dark:border-neutral-600 px-3 py-1.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Upload image
+          </button>
+          <input id="image-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" class="sr-only" />
+          <span id="image-status" class="text-xs text-neutral-400 dark:text-neutral-500"></span>
+        </div>
+      </div>
+
       <div class="flex flex-wrap gap-2">
         <button type="submit" class="rounded bg-[#0b0d39] dark:bg-[#f4f2c7] px-4 py-2 text-sm font-medium text-white dark:text-[#0b0d39] hover:opacity-90 transition-opacity">Save draft</button>
         <button type="button" id="publish-btn" class="rounded bg-green-700 dark:bg-green-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity">Publish</button>
@@ -91,6 +105,10 @@ export const prerender = false;
   const linksAdd = document.getElementById("links-add")!;
   const youtubeList = document.getElementById("youtube-list")!;
   const youtubeAdd = document.getElementById("youtube-add")!;
+  const imagesList = document.getElementById("images-list")!;
+  const imageAdd = document.getElementById("image-add")!;
+  const imageInput = document.getElementById("image-input") as HTMLInputElement;
+  const imageStatus = document.getElementById("image-status")!;
 
   const SECTION_LABELS: Record<string, string> = {
     "lecture-notes": "Lecture Notes",
@@ -104,6 +122,7 @@ export const prerender = false;
   let entries: any[] = [];
   let links: LinkRow[] = [];
   let youtubes: YoutubeRow[] = [];
+  let images: string[] = [];
   let rowId = 0;
   let editingId: string | null = null;
 
@@ -171,6 +190,51 @@ export const prerender = false;
     }
   }
 
+  function renderImages() {
+    imagesList.innerHTML = "";
+    if (images.length === 0) {
+      imagesList.innerHTML = '<p class="col-span-full text-xs text-neutral-400 dark:text-neutral-500 italic">No images yet.</p>';
+      return;
+    }
+    for (const key of images) {
+      const card = document.createElement("div");
+      card.className = "group relative overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700";
+      const img = document.createElement("img");
+      img.src = `/media/${key}`;
+      img.alt = "Uploaded image";
+      img.loading = "lazy";
+      img.className = "h-24 w-full object-cover bg-neutral-100 dark:bg-neutral-800";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "absolute right-1.5 top-1.5 rounded bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100";
+      remove.setAttribute("aria-label", "Remove image");
+      remove.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      remove.addEventListener("click", async () => {
+        if (!confirm("Remove this image? It will be deleted from storage.")) return;
+        try {
+          await api(`/media/key/${key}`, { method: "DELETE" });
+          images = images.filter((k) => k !== key);
+          renderImages();
+        } catch (err: any) {
+          errorEl.textContent = err.message ?? "Could not remove image.";
+          errorEl.classList.remove("hidden");
+        }
+      });
+      card.appendChild(img);
+      card.appendChild(remove);
+      imagesList.appendChild(card);
+    }
+  }
+
+  async function uploadImage(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("purpose", "education");
+    const data = await api<{ key: string }>("/media", { method: "POST", body: form, headers: {} });
+    return data.key;
+  }
+
   function valueOf(name: string): string {
     return (form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement)?.value ?? "";
   }
@@ -207,7 +271,7 @@ export const prerender = false;
         title.textContent = entry.heading;
         const meta = document.createElement("p");
         meta.className = "text-xs text-neutral-500 dark:text-neutral-400";
-        meta.textContent = `${entry.status} · ${new Date(entry.updatedAt).toLocaleString()} · ${(entry.links ?? []).length} links · ${(entry.youtubeLinks ?? []).length} videos`;
+        meta.textContent = `${entry.status} · ${new Date(entry.updatedAt).toLocaleString()} · ${(entry.links ?? []).length} links · ${(entry.youtubeLinks ?? []).length} videos · ${(entry.images ?? []).length} images`;
         info.appendChild(title);
         info.appendChild(meta);
         const actions = document.createElement("div");
@@ -258,9 +322,11 @@ export const prerender = false;
     (form.elements.namedItem("description") as HTMLTextAreaElement).value = "";
     links = [];
     youtubes = [];
+    images = [];
     rowId = 0;
     renderLinks();
     renderYoutubes();
+    renderImages();
     errorEl.classList.add("hidden");
     doneEl.classList.add("hidden");
     editorTitle.textContent = "New entry";
@@ -276,8 +342,10 @@ export const prerender = false;
     (form.elements.namedItem("description") as HTMLTextAreaElement).value = entry.description ?? "";
     links = (entry.links ?? []).map((l: any) => ({ id: rowId++, label: l.label, url: l.url }));
     youtubes = (entry.youtubeLinks ?? []).map((u: string) => ({ id: rowId++, url: u }));
+    images = (entry.images ?? []).slice();
     renderLinks();
     renderYoutubes();
+    renderImages();
     errorEl.classList.add("hidden");
     doneEl.classList.add("hidden");
     editorTitle.textContent = `Edit: ${entry.heading}`;
@@ -296,6 +364,7 @@ export const prerender = false;
         .map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
         .filter((l) => l.label && l.url),
       youtubeLinks: youtubes.map((y) => y.url.trim()).filter(Boolean),
+      images,
     };
     try {
       if (editingId) {
@@ -344,11 +413,14 @@ export const prerender = false;
   }
 
   async function removeEntry(entry: any) {
-    if (!confirm(`Delete "${entry.heading}"?`)) return;
+    if (!confirm(`Delete "${entry.heading}"? Its images will also be removed.`)) return;
     errorEl.classList.add("hidden");
     doneEl.classList.add("hidden");
     try {
       await api(`/content/education/${entry.id}`, { method: "DELETE" });
+      for (const key of entry.images ?? []) {
+        await api(`/media/key/${key}`, { method: "DELETE" }).catch(() => {});
+      }
       if (editingId === entry.id) {
         editorEl.classList.add("hidden");
       }
@@ -368,6 +440,25 @@ export const prerender = false;
   youtubeAdd.addEventListener("click", () => {
     youtubes.push({ id: rowId++, url: "" });
     renderYoutubes();
+  });
+  imageAdd.addEventListener("click", () => imageInput.click());
+  imageInput.addEventListener("change", async () => {
+    const file = imageInput.files?.[0];
+    if (!file) return;
+    errorEl.classList.add("hidden");
+    imageStatus.textContent = "Uploading…";
+    try {
+      const key = await uploadImage(file);
+      images.push(key);
+      renderImages();
+      imageStatus.textContent = "Uploaded.";
+    } catch (err: any) {
+      errorEl.textContent = err.message ?? "Upload failed.";
+      errorEl.classList.remove("hidden");
+      imageStatus.textContent = "";
+    }
+    imageInput.value = "";
+    setTimeout(() => (imageStatus.textContent = ""), 2500);
   });
   form.addEventListener("submit", (e) => {
     e.preventDefault();

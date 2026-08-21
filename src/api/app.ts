@@ -144,6 +144,7 @@ app.post('/__build', async (c) => {
       description: e.description ?? undefined,
       links: e.links ?? [],
       youtubeLinks: e.youtubeLinks ?? [],
+      images: e.images ?? [],
     },
   }));
 
@@ -659,6 +660,7 @@ app.post('/content/education', async (c) => {
     description: d.description ?? null,
     links: d.links ?? [],
     youtubeLinks: d.youtubeLinks ?? [],
+    images: d.images ?? [],
     sortOrder: (last?.max ?? -1) + 1,
     status: 'draft',
   });
@@ -691,6 +693,7 @@ app.put('/content/education/:id', async (c) => {
       description: d.description ?? null,
       links: d.links ?? [],
       youtubeLinks: d.youtubeLinks ?? [],
+      images: d.images ?? [],
       updatedAt: new Date(),
     })
     .where(eq(educationEntries.id, id));
@@ -955,5 +958,20 @@ app.delete('/media/:id', async (c) => {
   if (!asset) return c.json({ error: 'Not found' }, 404);
   await deleteImage(asset.key);
   await db.delete(mediaAssets).where(eq(mediaAssets.id, id));
+  return c.json({ ok: true });
+});
+
+// Delete an image by R2 key (used by content editors when unlinking an image
+// from an entry, so storage and the media record stay in sync).
+app.delete('/media/key/*', async (c) => {
+  const user = await requireModerator(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const key = c.req.param('*');
+  if (!key) return c.json({ error: 'Missing key' }, 400);
+  const db = await getDb();
+  const [asset] = await db.select().from(mediaAssets).where(eq(mediaAssets.key, key));
+  if (!asset) return c.json({ error: 'Not found' }, 404);
+  await deleteImage(asset.key);
+  await db.delete(mediaAssets).where(eq(mediaAssets.id, asset.id));
   return c.json({ ok: true });
 });
