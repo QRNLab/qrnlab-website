@@ -83,12 +83,12 @@ const navItems = [
           </button>
         </div>
 
-        <ul id="nav-links" class="hidden absolute left-0 right-0 top-full z-50 flex-col bg-[#0b0d39] dark:bg-[#f4f2c7] px-4 pb-4 shadow-lg md:static md:z-auto md:flex md:flex-row md:items-center md:gap-6 md:bg-transparent md:dark:bg-transparent md:p-0 md:ml-auto md:text-sm md:shadow-none">
+        <ul id="nav-links" class="hidden absolute left-0 right-0 top-full z-50 flex-col bg-[#0b0d39] dark:bg-[#f4f2c7] shadow-lg md:static md:z-auto md:flex md:flex-row md:items-center md:gap-6 md:bg-transparent md:dark:bg-transparent md:p-0 md:ml-auto md:text-sm md:shadow-none">
           {navItems.map((item) => (
-            <li>
+            <li class="even:bg-[#23286b] odd:bg-[#191d52] dark:even:bg-[#c4c29d] dark:odd:bg-[#dddaaf] md:even:bg-transparent md:odd:bg-transparent md:dark:even:bg-transparent md:dark:odd:bg-transparent">
               <a
                 href={item.href}
-                class={`block py-3 md:py-0 ${isActive(item.href)
+                class={`block px-4 py-3 md:px-0 md:py-0 ${isActive(item.href)
                   ? "text-amber-400 dark:text-[#575cc7] font-medium"
                   : "text-white/80 dark:text-black/80 hover:text-white dark:hover:text-[#0b0d39] transition-colors"
                 }`}
@@ -120,8 +120,40 @@ const navItems = [
         html.classList.toggle("dark");
         localStorage.setItem("theme", html.classList.contains("dark") ? "dark" : "light");
       }
+      var mobileNavAnimation = null;
       function toggleMobileNav() {
-        document.getElementById("nav-links").classList.toggle("hidden");
+        var el = document.getElementById("nav-links");
+        if (!el) return;
+        if (mobileNavAnimation) {
+          mobileNavAnimation.cancel();
+          mobileNavAnimation = null;
+        }
+        var closed = el.classList.contains("hidden");
+        var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (closed) {
+          el.classList.remove("hidden");
+          if (reduced) return;
+          mobileNavAnimation = el.animate(
+            [
+              { opacity: 0, transform: "translateY(-10px)" },
+              { opacity: 1, transform: "translateY(0)" },
+            ],
+            { duration: 180, easing: "ease-out" }
+          );
+        } else if (!reduced) {
+          mobileNavAnimation = el.animate(
+            [
+              { opacity: 1, transform: "translateY(0)" },
+              { opacity: 0, transform: "translateY(0)" },
+            ],
+            { duration: 120, easing: "ease-in" }
+          );
+          mobileNavAnimation.onfinish = function () {
+            el.classList.add("hidden");
+          };
+        } else {
+          el.classList.add("hidden");
+        }
       }
     </script>
     <script>
