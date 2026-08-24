@@ -4,7 +4,7 @@
 [x]. PI user (admin-assigned team category; PI registers normally, admin promotes)
 [ ]. add back buttons in appropriate pages
 [x]. regarding affiliates image: delete all in Zaman section. keep only the left most pic in Mayeen section. keep the left most and the third one from the left in Lembit section. And keep all images in the Nakahiro section.
-[ ]. education page: make section for poster, make section for video presentation where youtube videos can be embedded
+[x]. education page: make section for poster, make section for video presentation where youtube videos can be embedded
 [x]. make team member picture bigger
 [ ]. add linkedin or social media links of qrnlab
 [x]. in team memeber publications, add left bar (quote line same as the ones in affiliations page) to make separation between different publications clear.

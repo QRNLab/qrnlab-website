@@ -1,44 +1,19 @@
 {
-  "name": "qrnlab-website",
+  "name": "qrnlab",
+  "private": true,
   "type": "module",
-  "version": "0.0.1",
+  "packageManager": "pnpm@11.3.0",
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro",
-    "check": "astro check",
-    "types": "wrangler types --include-runtime=false",
-    "db:push": "drizzle-kit push",
-    "db:generate": "drizzle-kit generate"
-  },
-  "dependencies": {
-    "@astrojs/cloudflare": "^14.2.1",
-    "@astrojs/markdown-remark": "^7.2.2",
-    "@better-auth/drizzle-adapter": "^1.6.25",
-    "@tailwindcss/vite": "^4.3.2",
-    "astro": "^7.2.2",
-    "better-auth": "^1.6.25",
-    "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.33",
-    "katex": "^0.18.1",
-    "marked": "^18.0.7",
-    "rehype-katex": "^7.0.1",
-    "remark-math": "^6.0.0",
-    "resend": "^6.18.1",
-    "tailwindcss": "^4.3.2",
-    "wrangler": "^4.123.0",
-    "yaml": "^2.9.0",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@astrojs/check": "^0.9.10",
-    "@cloudflare/workers-types": "^5.20260816.1",
-    "@types/node": "^26.1.2",
-    "drizzle-kit": "^0.31.10",
-    "typescript": "^6.0.3"
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @qrnlab/site dev",
+    "dev:site": "pnpm --filter @qrnlab/site dev",
+    "dev:admin": "pnpm --filter @qrnlab/admin dev",
+    "check": "pnpm -r check",
+    "typecheck": "pnpm -r typecheck",
+    "deploy:admin": "pnpm --filter @qrnlab/admin run deploy:admin",
+    "deploy:site": "pnpm --filter @qrnlab/site run deploy:site"
   }
 }

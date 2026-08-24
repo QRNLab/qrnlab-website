@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/* ============ TOKENS (light) ============ */
+@theme {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-ink: #16233f;
+  --color-ink-soft: #4c5a76;
+  --color-ink-faint: #8993a8;
+  --color-paper: #eef1f5;
+  --color-paper-raised: #ffffff;
+  --color-amber: #dd8b2e;
+  --color-amber-ink: #5c3a0c;
+  --color-cyan: #2f9fb8;
+  --color-cyan-ink: #0c3a43;
+  --color-green: #3f8a5a;
+  --color-green-ink: #1d4a30;
+  --color-red: #c2493d;
+  --color-red-ink: #611e17;
+  --color-void: #0b1526;
+  --color-void-raised: #111e34;
+
+  --color-bg: #eef1f5;
+  --color-bg-raised: #ffffff;
+  --color-fg: #16233f;
+  --color-fg-soft: #4c5a76;
+  --color-fg-faint: #8993a8;
+  --color-border: rgba(22, 35, 63, 0.12);
+  --color-border-soft: rgba(22, 35, 63, 0.07);
+
+  --radius: 2px;
+}
+
+:root {
+  --grid: radial-gradient(circle at 1px 1px, rgba(22, 35, 63, 0.09) 1px, transparent 1px);
+  color-scheme: light;
+}
+
+/* ============ TOKENS (dark) ============ */
+.dark {
+  --color-bg: #0b1526;
+  --color-bg-raised: #111e34;
+  --color-fg: #eef1f5;
+  --color-fg-soft: #b7c0d1;
+  --color-fg-faint: #7c879e;
+  --color-border: rgba(238, 241, 245, 0.14);
+  --color-border-soft: rgba(238, 241, 245, 0.08);
+  --color-amber-ink: #f2c47f;
+  --color-cyan-ink: #7fd2e2;
+  --color-green-ink: #8fd0a5;
+  --color-red-ink: #ef9a8f;
+  --grid: radial-gradient(circle at 1px 1px, rgba(238, 241, 245, 0.09) 1px, transparent 1px);
+  color-scheme: dark;
+}
+
+/* ============ BASE ============ */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    background-image: var(--grid);
+    background-size: 22px 22px;
+    color: var(--color-fg);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-amber);
+    outline-offset: 2px;
+  }
+}
+
+/* ============ CUSTOM UTILITIES ============ */
+@utility eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-fg-soft);
+  &::before {
+    content: "";
+    width: 22px;
+    height: 1px;
+    background: var(--color-amber);
+    flex-shrink: 0;
+  }
+}
+@utility eyebrow-cyan {
+  &::before {
+    background: var(--color-cyan);
+  }
+}
+@utility dot-grid {
+  background-image: var(--grid);
+  background-size: 22px 22px;
+}
+@utility hairline {
+  border: 1px solid var(--color-border);
+}
+@utility ring-focus {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 2px;
+}
+@utility glass {
+  background: color-mix(in srgb, var(--color-bg) 86%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+@utility icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-fg-soft);
+  transition: border-color 0.15s ease, color 0.15s ease;
+  &:hover {
+    border-color: var(--color-amber);
+    color: var(--color-fg);
+  }
+}
+@utility empty-lines {
+  background-image: repeating-linear-gradient(
+    var(--color-bg) 0px,
+    var(--color-bg) 27px,
+    var(--color-border-soft) 28px
+  );
+}
+@utility status-dot {
+  border-radius: 9999px;
+  background: currentColor;
+  animation: status-pulse 1.8s ease-in-out infinite;
+}
+@utility status-dot-static {
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+/* ============ MOTION ============ */
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.toast-in {
+  animation: toast-in 0.18s ease-out;
+}
+.orbit-anim {
+  transform-origin: 50px 50px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .orbit-anim {
+    animation: orbit-spin 60s linear infinite;
+  }
+  .orbit-anim.rev {
+    animation-direction: reverse;
+    animation-duration: 44s;
+  }
+  .orbit-anim.slow {
+    animation-duration: 90s;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

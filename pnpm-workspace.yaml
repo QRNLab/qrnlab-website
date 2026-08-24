@@ -1,7 +1,16 @@
 packages:
-  - .
+  - "apps/*"
+  - "packages/*"
 
 allowBuilds:
   esbuild: true
   sharp: true
   workerd: true
+
+# Solid 2 is in RC; ecosystem peers (solid-sonner, better-auth) still declare
+# Solid 1.x ranges. We intentionally run the coordinated RC.
+peerDependencyRules:
+  allowedVersions:
+    "solid-js": "^2.0.0-rc.0"
+    "@solidjs/web": "^2.0.0-rc.0"
+    "@solidjs/router": "^2.0.0-next.0"
