@@ -72,7 +72,7 @@ export default function Join() {
                 Register
               </h1>
               <p class="mt-2 max-w-prose text-sm leading-relaxed text-fg-soft">
-                Create an account to manage content and your QRNLab profile.
+                Create an account to write posts and build your QRNLab profile.
               </p>
             </header>
 

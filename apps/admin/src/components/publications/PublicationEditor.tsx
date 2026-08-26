@@ -66,8 +66,8 @@ export function PublicationEditor(props: PublicationEditorProps) {
   const [errors, setErrors] = createSignal<FormErrors>({});
   const [saving, setSaving] = createSignal(false);
 
-  createEffect(() => {
-    if (!isOpen()) return;
+  createEffect(() => isOpen(), (open) => {
+    if (!open) return;
     const pub = props.publication;
     setErrors({});
     setSaving(false);

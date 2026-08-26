@@ -27,11 +27,14 @@ export function RequireAuth(props: ParentProps) {
   const { session, loading } = useSession();
   const navigate = useNavigate();
 
-  createEffect(() => {
-    if (!loading() && !session()) {
-      navigate('/login', { replace: true });
-    }
-  });
+  createEffect(
+    () => ({ loading: loading(), session: session() }),
+    ({ loading, session }) => {
+      if (!loading && !session) {
+        navigate('/login', { replace: true });
+      }
+    },
+  );
 
   return (
     <Show when={loading() || !session()} fallback={props.children}>

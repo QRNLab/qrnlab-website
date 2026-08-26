@@ -7,14 +7,46 @@ const updates = (await getCollection("updates"))
 ---
 
 <BaseLayout title="Home" description="QRNLab — Bridging Nuclear, Quantum, and Astrophysical Frontiers through Research and Innovation">
-  <section class="mb-16">
-    <h1 class="text-4xl font-semibold tracking-tight">QRNLab</h1>
-    <p class="mt-2 text-lg text-neutral-500 dark:text-neutral-400 max-w-3xl">
-      Bridging Nuclear, Quantum, and Astrophysical Frontiers through Research and Innovation
-    </p>
-    <p class="mt-6 text-neutral-700 dark:text-neutral-300 leading-relaxed max-w-3xl">
-      QRNLab is a multidisciplinary research group dedicated to advancing fundamental and applied physics. Our work spans a wide spectrum of domains, from nuclear and medical physics to quantum computing and astrophysics. The lab operates under the guidance of Dr. Quazi Muhammad Rashed Nizam, whose expertise in nuclear physics forms the foundation of our experimental and theoretical investigations.
-    </p>
+  <section class="mb-16 grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
+    <div class="max-w-xl">
+      <a
+        href="https://www.google.com/maps/place/22%C2%B028'12.8%22N+91%C2%B046'53.7%22E/@22.470218,91.7809313,19z"
+        target="_blank"
+        rel="noopener"
+        class="hero-loc"
+      >CHITTAGONG, BANGLADESH 22.470218&deg;N, 91.7809313&deg;E</a>
+      <h1 class="text-4xl font-semibold tracking-tight">QRNLab</h1>
+      <p class="mt-2 text-lg text-neutral-500 dark:text-neutral-400">
+        Bridging Nuclear, Quantum, and Astrophysical Frontiers through Research and Innovation
+      </p>
+      <p class="mt-6 text-neutral-700 dark:text-neutral-300 leading-relaxed">
+        QRNLab is a multidisciplinary research group dedicated to advancing fundamental and applied physics. Our work spans a wide spectrum of domains, from nuclear and medical physics to quantum computing and astrophysics. The lab operates under the guidance of Dr. Quazi Muhammad Rashed Nizam, whose expertise in nuclear physics forms the foundation of our experimental and theoretical investigations.
+      </p>
+    </div>
+    <div class="order-first flex justify-center lg:order-none" aria-hidden="true">
+      <svg class="orbit-mark" viewBox="0 0 400 400" fill="none">
+        <g class="orbit-anim">
+          <ellipse cx="200" cy="200" rx="170" ry="72" class="orbit-faint" stroke-width="1" />
+        </g>
+        <g class="orbit-anim rev">
+          <g transform="rotate(60 200 200)">
+            <ellipse cx="200" cy="200" rx="170" ry="72" class="orbit-amber" stroke-width="1.4" />
+            <circle cx="0" cy="0" r="5" class="orbit-dot-amber">
+              <animateMotion dur="16s" repeatCount="indefinite" path="M 200 128 A 170 72 0 0 1 200 272 A 170 72 0 0 1 200 128" />
+            </circle>
+          </g>
+        </g>
+        <g class="orbit-anim slow">
+          <g transform="rotate(120 200 200)">
+            <ellipse cx="200" cy="200" rx="170" ry="72" class="orbit-cyan" stroke-width="1.4" />
+            <circle cx="0" cy="0" r="4" class="orbit-dot-cyan">
+              <animateMotion dur="24s" repeatCount="indefinite" path="M 200 128 A 170 72 0 0 1 200 272 A 170 72 0 0 1 200 128" />
+            </circle>
+          </g>
+        </g>
+        <circle cx="200" cy="200" r="10" class="orbit-dot" />
+      </svg>
+    </div>
   </section>
 
   <section class="grid gap-6 sm:grid-cols-2">
@@ -27,7 +59,7 @@ const updates = (await getCollection("updates"))
     <a href="/team" class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-6 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
       <h2 class="text-lg font-medium text-neutral-900 dark:text-neutral-100">Team</h2>
       <p class="mt-1.5 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
-        Meet our principal investigator, current members, and alumni. Members can register through self-registration.
+        Meet our principal investigator, current members, and alumni.
       </p>
     </a>
     <a href="/publications" class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-6 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
@@ -60,3 +92,9 @@ const updates = (await getCollection("updates"))
     )}
   </section>
 </BaseLayout>
+
+<script>
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.querySelectorAll("animateMotion").forEach((el) => el.pauseAnimations());
+  }
+</script>

@@ -93,6 +93,126 @@
     overflow-y: hidden;
     padding: 0.25rem 0;
   }
+
+  .nav-link {
+    position: relative;
+    transition: color 0.2s ease;
+  }
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 8px;
+    height: 2px;
+    background-color: var(--color-amber-500);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.25s ease;
+  }
+  @media (min-width: 768px) {
+    .nav-link::after {
+      left: 0;
+      right: 0;
+      bottom: -4px;
+    }
+  }
+  .nav-link:hover::after,
+  .nav-link.active::after {
+    transform: scaleX(1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link,
+    .nav-link::after {
+      transition: none;
+    }
+  }
+
+  .orbit-mark {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+  }
+  @media (min-width: 1024px) {
+    .orbit-mark {
+      max-width: 380px;
+    }
+  }
+  .orbit-anim {
+    transform-origin: 200px 200px;
+  }
+  .orbit-faint {
+    stroke: var(--color-neutral-400);
+    opacity: 0.6;
+  }
+  .dark .orbit-faint {
+    stroke: var(--color-neutral-600);
+  }
+  .orbit-amber {
+    stroke: var(--color-amber-500);
+  }
+  .orbit-cyan {
+    stroke: var(--color-cyan-500);
+  }
+  .dark .orbit-cyan {
+    stroke: var(--color-cyan-400);
+  }
+  .orbit-dot {
+    fill: var(--color-neutral-900);
+  }
+  .dark .orbit-dot {
+    fill: var(--color-neutral-100);
+  }
+  .orbit-dot-amber {
+    fill: var(--color-amber-500);
+  }
+  .orbit-dot-cyan {
+    fill: var(--color-cyan-500);
+  }
+
+  .hero-loc {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-neutral-500);
+    border: 1px solid var(--color-neutral-200);
+    padding: 6px 12px;
+    margin-bottom: 22px;
+    text-decoration: none;
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  .hero-loc:hover {
+    border-color: var(--color-neutral-400);
+    color: var(--color-neutral-900);
+  }
+  .dark .hero-loc {
+    color: var(--color-neutral-400);
+    border-color: var(--color-neutral-700);
+  }
+  .dark .hero-loc:hover {
+    border-color: var(--color-neutral-500);
+    color: var(--color-neutral-100);
+  }
+}
+
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .orbit-anim {
+    animation: orbit-spin 60s linear infinite;
+  }
+  .orbit-anim.rev {
+    animation-direction: reverse;
+    animation-duration: 44s;
+  }
+  .orbit-anim.slow {
+    animation-duration: 90s;
+  }
 }
 
 @keyframes fadeInUp {

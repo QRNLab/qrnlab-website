@@ -87,7 +87,9 @@ const store = createRoot(() => {
 
 /** Context provider that fetches `/api/me` on mount. */
 export function SessionProvider(props: ParentProps) {
-  createEffect(() => {
+  // Run in the effect phase (not during render) so the store's signal writes
+  // are legal — a direct call would write reactive state in an owned scope.
+  createEffect(() => undefined, () => {
     void store.refresh();
   });
   return <SessionContext value={store}>{props.children}</SessionContext>;
@@ -125,7 +127,7 @@ export async function register(name: string, email: string, password: string): P
 }
 
 export async function logout(): Promise<void> {
-  await api('/auth/sign-out', { method: 'POST' });
+  await api('/auth/sign-out', { method: 'POST', body: JSON.stringify({}) });
 }
 
 export async function requestVerification(email: string): Promise<void> {

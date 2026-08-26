@@ -5,7 +5,7 @@ import { updateSchema } from '@qrnlab/shared';
 import type { Update } from '../lib/types';
 import { api, ApiError } from '../lib/api';
 import { toast } from '../lib/toast';
-import { RequirePermission } from './guard';
+import { RequireAuth, RequirePermission } from './guard';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -54,9 +54,10 @@ export default function Updates() {
 
   const updates = createMemo<{ updates: Update[] } | undefined>(
     async () => {
-      setLoadError(null);
       try {
-        return await getUpdates();
+        const result = await getUpdates();
+        setLoadError(null);
+        return result;
       } catch (err) {
         const message =
           err instanceof ApiError || err instanceof Error
@@ -136,7 +137,8 @@ export default function Updates() {
   };
 
   return (
-    <RequirePermission permission="content.moderate">
+    <RequireAuth>
+      <RequirePermission permission="content.moderate">
       <div class="flex flex-col gap-6">
         <header>
           <span class="eyebrow eyebrow-amber">Content / Updates</span>
@@ -261,6 +263,7 @@ export default function Updates() {
           isLoading={deleting()}
         />
       </div>
-    </RequirePermission>
+      </RequirePermission>
+    </RequireAuth>
   );
 }

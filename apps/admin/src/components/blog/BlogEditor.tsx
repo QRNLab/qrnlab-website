@@ -29,6 +29,7 @@ function escapeHtml(source: string): string {
 export type BlogEditorProps = {
   initial?: BlogPost | null;
   onSaved: () => void;
+  eyebrow?: string;
 };
 
 export function BlogEditor(props: BlogEditorProps) {
@@ -104,7 +105,7 @@ export function BlogEditor(props: BlogEditorProps) {
 
   const afterSave = async (message: string) => {
     toast.success(message);
-    await revalidate('blog-posts');
+    await revalidate(['blog-posts', 'my-posts']);
     props.onSaved();
   };
 
@@ -181,7 +182,7 @@ export function BlogEditor(props: BlogEditorProps) {
   return (
     <div class="flex flex-col gap-6">
       <header>
-        <span class="eyebrow eyebrow-cyan">Blog / {props.initial ? 'Edit' : 'New'}</span>
+        <span class="eyebrow eyebrow-cyan">{props.eyebrow ?? 'Blog'} / {props.initial ? 'Edit' : 'New'}</span>
         <h1 class="font-display text-2xl font-bold tracking-[-0.02em] text-fg sm:text-3xl">
           {props.initial ? 'Edit post' : 'New post'}
         </h1>

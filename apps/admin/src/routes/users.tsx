@@ -1,10 +1,9 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
-import { Loading, Errored } from 'solid-js';
 import { query, revalidate } from '@solidjs/router';
 import { api } from '../lib/api';
 import { useSession } from '../lib/session';
 import { toast } from '../lib/toast';
-import { RequirePermission } from './guard';
+import { RequireAuth, RequirePermission } from './guard';
 import type { AdminUser, Role } from '../lib/types';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -31,7 +30,23 @@ function errorMessage(err: unknown): string {
 
 export default function Users() {
   const { session } = useSession();
-  const users = createMemo(() => getAdminUsers());
+  const [error, setError] = createSignal<string | null>(null);
+  const users = createMemo<{ users: AdminUser[] } | undefined>(
+    async () => {
+      try {
+        const result = await getAdminUsers();
+        setError(null);
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load users.';
+        setError(message);
+        return undefined;
+      }
+    },
+    { loadingValue: undefined },
+  );
+  const loading = () => users() === undefined && !error();
+  const userList = () => users()?.users ?? [];
   const [actingUserId, setActingUserId] = createSignal<string | null>(null);
 
   const currentUserId = () => session()?.user.id;
@@ -73,7 +88,8 @@ export default function Users() {
   };
 
   return (
-    <RequirePermission permission="users.manage">
+    <RequireAuth>
+      <RequirePermission permission="users.manage">
       <div class="flex flex-col gap-6">
         <header>
           <span class="eyebrow">Users</span>
@@ -86,103 +102,100 @@ export default function Users() {
           </p>
         </header>
 
-        <Errored
-          fallback={(err, reset) => (
-            <ErrorState
-              title="Could not load users"
-              message={errorMessage(err())}
-              retry={() => {
-                revalidate('admin-users');
-                reset();
-              }}
-            />
-          )}
-        >
-          <Loading fallback={<Skeleton class="h-64" />}>
-            <Show
-              when={users().users.length > 0}
-              fallback={
-                <EmptyState
-                  title="No users"
-                  description="Registered accounts will appear here once members sign up."
-                />
-              }
-            >
-              <Table>
-                <TableHead>
+        <Show when={loading()}>
+          <Skeleton class="h-64" />
+        </Show>
+
+        <Show when={error() && !users()}>
+          <ErrorState
+            title="Could not load users"
+            message={errorMessage(error())}
+            retry={() => revalidate('admin-users')}
+          />
+        </Show>
+
+        <Show when={users() && userList().length === 0}>
+          <EmptyState
+            title="No users"
+            description="Registered accounts will appear here once members sign up."
+          />
+        </Show>
+
+        <Show when={users() && userList().length > 0}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeader>User</TableHeader>
+                <TableHeader>Verified</TableHeader>
+                <TableHeader>Role</TableHeader>
+                <TableHeader>Team category</TableHeader>
+                <TableHeader>Joined</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <For each={userList()}>
+                {(user) => (
                   <TableRow>
-                    <TableHeader>User</TableHeader>
-                    <TableHeader>Verified</TableHeader>
-                    <TableHeader>Role</TableHeader>
-                    <TableHeader>Team category</TableHeader>
-                    <TableHeader>Joined</TableHeader>
+                    <TableCell>
+                      <div class="flex flex-col">
+                        <div class="flex items-center gap-2">
+                          <span class="font-medium text-fg">{user.name}</span>
+                          <Show when={user.id === currentUserId()}>
+                            <Badge tone="amber">You</Badge>
+                          </Show>
+                        </div>
+                        <span class="font-mono text-xs text-fg-faint">{user.email}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone={user.emailVerified ? 'green' : 'neutral'}>
+                        {user.emailVerified ? 'Verified' : 'Unverified'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        class="w-32"
+                        value={user.role}
+                        onChange={(event) => changeRole(user.id, event.currentTarget.value as Role)}
+                        disabled={user.id === currentUserId() || actingUserId() === user.id}
+                        aria-label={`Role for ${user.name}`}
+                      >
+                        <For each={ROLE_OPTIONS}>
+                          {(role) => <option value={role}>{role}</option>}
+                        </For>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        class="w-36"
+                        value={user.category ?? ''}
+                        placeholderOption="—"
+                        onChange={(event) =>
+                          changeCategory(user.id, event.currentTarget.value as Category)
+                        }
+                        disabled={actingUserId() === user.id}
+                        aria-label={`Team category for ${user.name}`}
+                      >
+                        <For each={CATEGORY_OPTIONS}>
+                          {(category) => <option value={category}>{category}</option>}
+                        </For>
+                      </Select>
+                    </TableCell>
+                    <TableCell class="whitespace-nowrap font-mono text-xs text-fg-faint">
+                      {formatDate(user.createdAt)}
+                    </TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  <For each={users().users}>
-                    {(user) => (
-                      <TableRow>
-                        <TableCell>
-                          <div class="flex flex-col">
-                            <div class="flex items-center gap-2">
-                              <span class="font-medium text-fg">{user.name}</span>
-                              <Show when={user.id === currentUserId()}>
-                                <Badge tone="amber">You</Badge>
-                              </Show>
-                            </div>
-                            <span class="font-mono text-xs text-fg-faint">{user.email}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge tone={user.emailVerified ? 'green' : 'neutral'}>
-                            {user.emailVerified ? 'Verified' : 'Unverified'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            class="w-32"
-                            value={user.role}
-                            onChange={(event) => changeRole(user.id, event.currentTarget.value as Role)}
-                            disabled={user.id === currentUserId() || actingUserId() === user.id}
-                            aria-label={`Role for ${user.name}`}
-                          >
-                            <For each={ROLE_OPTIONS}>
-                              {(role) => <option value={role}>{role}</option>}
-                            </For>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            class="w-36"
-                            value={user.category ?? ''}
-                            placeholderOption="—"
-                            onChange={(event) =>
-                              changeCategory(user.id, event.currentTarget.value as Category)
-                            }
-                            disabled={actingUserId() === user.id}
-                            aria-label={`Team category for ${user.name}`}
-                          >
-                            <For each={CATEGORY_OPTIONS}>
-                              {(category) => <option value={category}>{category}</option>}
-                            </For>
-                          </Select>
-                        </TableCell>
-                        <TableCell class="whitespace-nowrap font-mono text-xs text-fg-faint">
-                          {formatDate(user.createdAt)}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </For>
-                </TableBody>
-              </Table>
-            </Show>
-            <p class="mt-3 text-xs leading-relaxed text-fg-faint">
-              Team category is a public profile field only — the pi category grants no moderation
-              rights.
-            </p>
-          </Loading>
-        </Errored>
+                )}
+              </For>
+            </TableBody>
+          </Table>
+          <p class="mt-3 text-xs leading-relaxed text-fg-faint">
+            Team category is a public profile field only — the pi category grants no moderation
+            rights.
+          </p>
+        </Show>
       </div>
-    </RequirePermission>
+      </RequirePermission>
+    </RequireAuth>
   );
 }

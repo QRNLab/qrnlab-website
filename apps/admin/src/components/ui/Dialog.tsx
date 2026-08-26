@@ -1,4 +1,4 @@
-import { createEffect, createUniqueId, onCleanup, Show } from 'solid-js';
+import { createEffect, createUniqueId, Show } from 'solid-js';
 import type { ParentProps } from 'solid-js';
 import { Portal } from '@solidjs/web';
 import { cn } from '../../lib/cn';
@@ -54,8 +54,8 @@ export function Dialog(props: DialogProps) {
     }
   };
 
-  createEffect(() => {
-    if (!isOpen()) return;
+  createEffect(() => isOpen(), (open) => {
+    if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -71,11 +71,11 @@ export function Dialog(props: DialogProps) {
     document.addEventListener('keydown', onKeyDown, true);
     panelRef?.focus();
 
-    onCleanup(() => {
+    return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener('keydown', onKeyDown, true);
       previous?.focus?.();
-    });
+    };
   });
 
   return (

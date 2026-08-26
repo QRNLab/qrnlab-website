@@ -13,8 +13,18 @@ export type FieldContextValue = {
 
 const FieldContext = createContext<FieldContextValue | undefined>(undefined);
 
+/**
+ * Read the nearest `<Field>` context. Returns `undefined` when the control is
+ * rendered outside a `<Field>` (e.g. a `<Select>` in a table) — Solid's
+ * `useContext` throws for an unset context with an `undefined` default, so this
+ * wraps it to keep the field context genuinely optional.
+ */
 export function useFieldContext(): FieldContextValue | undefined {
-  return useContext(FieldContext);
+  try {
+    return useContext(FieldContext);
+  } catch {
+    return undefined;
+  }
 }
 
 export type FieldProps = ParentProps<{

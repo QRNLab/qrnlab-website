@@ -1,14 +1,14 @@
 import { For, Show } from 'solid-js';
 import type { ParentProps } from 'solid-js';
-import { Badge } from '../components/ui/Badge';
-import type { BadgeTone } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
-import { Card, CardContent, CardHeader } from '../components/ui/Card';
-import { EmptyState } from '../components/ui/EmptyState';
-import { mediaUrl } from '../lib/api';
-import { useSession } from '../lib/session';
-import type { Profile } from '../lib/types';
-import { RequireAuth } from './guard';
+import { Badge } from '../../components/ui/Badge';
+import type { BadgeTone } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
+import { Card, CardContent, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { mediaUrl } from '../../lib/api';
+import { useSession } from '../../lib/session';
+import type { Profile } from '../../lib/types';
+import { RequireAuth } from '../guard';
 
 const ROLE_TONE: Record<string, BadgeTone> = {
   admin: 'amber',

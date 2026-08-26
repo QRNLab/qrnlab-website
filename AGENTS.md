@@ -33,11 +33,13 @@ Site (`apps/site`):
 - Rebuilds arrive via the site's Workers Builds **Deploy Hook** (wired as `DEPLOY_HOOK_URL` on the admin worker), or a manual push.
 
 Admin (`apps/admin`):
+- `pnpm --filter @qrnlab/admin dev` — Vite dev server (SPA, port 3000). It proxies `/api/*` to `http://localhost:8788`, so run the API alongside it:
+- `pnpm --filter @qrnlab/admin dev:api` — `wrangler dev --port 8788 --local` (API + local D1). Start this in a second terminal.
 - `pnpm --filter @qrnlab/admin build` — Vite build of the Solid SPA → `apps/admin/dist/client`.
-- `pnpm --filter @qrnlab/admin dev` — Vite dev server (SPA). For the API + local D1, run `pnpm --filter @qrnlab/admin preview` (wrangler dev) or `wrangler dev --local`.
+- `pnpm --filter @qrnlab/admin preview` — `wrangler dev --port 8788 --local` against the built SPA + API.
 - `pnpm --filter @qrnlab/admin types` — regenerate `worker-configuration.d.ts`.
 - `pnpm --filter @qrnlab/admin db:generate` — D1 migration into `apps/admin/drizzle`; `wrangler d1 migrations apply qrnlab --local|--remote` from `apps/admin`.
-- `pnpm --filter @qrnlab/admin deploy` — build SPA + `wrangler deploy` to the `qrnlab-app` Worker (bind `app.qrnlab.org`).
+- `pnpm --filter @qrnlab/admin deploy:admin` — build SPA + `wrangler deploy` to the `qrnlab-app` Worker (bind `app.qrnlab.org`).
 
 ### DNS / domains
 

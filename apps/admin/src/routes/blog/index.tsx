@@ -1,20 +1,20 @@
-import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
+import { createMemo, createSignal, For, Show } from 'solid-js';
 import { query, revalidate, useNavigate } from '@solidjs/router';
-import { api } from '../lib/api';
-import type { BlogPost } from '../lib/types';
-import { toast } from '../lib/toast';
-import { Badge } from '../components/ui/Badge';
-import type { BadgeTone } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { Dialog } from '../components/ui/Dialog';
-import { EmptyState } from '../components/ui/EmptyState';
-import { ErrorState } from '../components/ui/ErrorState';
-import { Field } from '../components/ui/Field';
-import { Skeleton } from '../components/ui/Skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
-import { Textarea } from '../components/ui/Textarea';
-import { RequireAuth } from './guard';
+import { api } from '../../lib/api';
+import type { BlogPost } from '../../lib/types';
+import { toast } from '../../lib/toast';
+import { Badge } from '../../components/ui/Badge';
+import type { BadgeTone } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Dialog } from '../../components/ui/Dialog';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { Field } from '../../components/ui/Field';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
+import { Textarea } from '../../components/ui/Textarea';
+import { RequireAuth, RequirePermission } from '../guard';
 
 type BlogListResponse = {
   posts: BlogPost[];
@@ -42,7 +42,9 @@ function formatDate(value: string): string {
 export default function Blog() {
   return (
     <RequireAuth>
-      <BlogList />
+      <RequirePermission permission="content.moderate">
+        <BlogList />
+      </RequirePermission>
     </RequireAuth>
   );
 }
@@ -50,67 +52,29 @@ export default function Blog() {
 function BlogList() {
   const navigate = useNavigate();
 
-  const [data, setData] = createSignal<BlogListResponse | null>(null);
   const [error, setError] = createSignal<string | null>(null);
-  const [loading, setLoading] = createSignal(true);
   const [busy, setBusy] = createSignal(false);
   const [rejectTarget, setRejectTarget] = createSignal<BlogPost | null>(null);
   const [rejectNote, setRejectNote] = createSignal('');
   const [deleteTarget, setDeleteTarget] = createSignal<BlogPost | null>(null);
 
-  createEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-    void getPosts().then(
-      (value) => {
-        if (!active) return;
-        setData(value);
-        setLoading(false);
-      },
-      (err) => {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : 'Failed to load blog posts.');
-        setLoading(false);
-      },
-    );
-    onCleanup(() => {
-      active = false;
-    });
-  });
+  const data = createMemo<BlogListResponse | undefined>(
+    async () => {
+      try {
+        const result = await getPosts();
+        setError(null);
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load blog posts.';
+        setError(message);
+        return undefined;
+      }
+    },
+    { loadingValue: undefined },
+  );
 
-  const me = () => data()?.me ?? null;
+  const loading = () => data() === undefined && !error();
   const posts = () => data()?.posts ?? [];
-
-  const canSubmit = (post: BlogPost) => {
-    const current = me();
-    if (!current) return false;
-    return (
-      (post.status === 'draft' || post.status === 'rejected') &&
-      (post.authorId === current.id || current.canModerate)
-    );
-  };
-
-  const canDelete = (post: BlogPost) => {
-    const current = me();
-    if (!current) return false;
-    return current.canModerate || (post.authorId === current.id && post.status !== 'published');
-  };
-
-  const onSubmit = async (post: BlogPost) => {
-    setBusy(true);
-    try {
-      await api(`/content/blog/${post.id}/submit`, { method: 'POST' });
-      toast.success('Submitted for review');
-      await revalidate(getPosts.key);
-    } catch (err) {
-      toast.error('Submit failed', {
-        description: err instanceof Error ? err.message : 'Could not submit the post.',
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const onPublish = async (post: BlogPost) => {
     setBusy(true);
@@ -173,13 +137,12 @@ function BlogList() {
         <div>
           <span class="eyebrow">Content / Blog</span>
           <h1 class="font-display text-2xl font-bold tracking-[-0.02em] text-fg sm:text-3xl">
-            Blog posts
+            Moderation queue
           </h1>
           <p class="mt-2 max-w-prose text-sm leading-relaxed text-fg-soft">
-            Draft, review, and publish lab posts. Moderators see everything; members see their own.
+            Review, publish, or reject submitted lab posts.
           </p>
         </div>
-        <Button onClick={() => navigate('/blog/new')}>New post</Button>
       </header>
 
       <Show when={loading() && !data()}>
@@ -202,13 +165,8 @@ function BlogList() {
 
       <Show when={data() && posts().length === 0}>
         <EmptyState
-          title="No blog posts yet"
-          description="Create your first post to get started."
-          action={
-            <Button variant="outline" size="sm" onClick={() => navigate('/blog/new')}>
-              New post
-            </Button>
-          }
+          title="No posts to moderate"
+          description="Submitted posts will appear here for review."
         />
       </Show>
 
@@ -217,9 +175,7 @@ function BlogList() {
           <TableHead>
             <TableRow>
               <TableHeader>Title</TableHeader>
-              <Show when={me()?.canModerate}>
-                <TableHeader>Author</TableHeader>
-              </Show>
+              <TableHeader>Author</TableHeader>
               <TableHeader>Status</TableHeader>
               <TableHeader>Updated</TableHeader>
               <TableHeader class="text-right">Actions</TableHeader>
@@ -232,11 +188,9 @@ function BlogList() {
                   <TableCell class="max-w-xs">
                     <span class="line-clamp-2 font-medium text-fg">{post.title}</span>
                   </TableCell>
-                  <Show when={me()?.canModerate}>
-                    <TableCell class="whitespace-nowrap text-sm text-fg-soft">
-                      {post.authorName ?? post.authorId}
-                    </TableCell>
-                  </Show>
+                  <TableCell class="whitespace-nowrap text-sm text-fg-soft">
+                    {post.authorName ?? post.authorId}
+                  </TableCell>
                   <TableCell>
                     <Badge tone={STATUS_TONE[post.status]} dot>
                       {post.status}
@@ -255,17 +209,7 @@ function BlogList() {
                       >
                         Edit
                       </Button>
-                      <Show when={canSubmit(post)}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onSubmit(post)}
-                          disabled={busy()}
-                        >
-                          Submit
-                        </Button>
-                      </Show>
-                      <Show when={post.status === 'submitted' && me()?.canModerate}>
+                      <Show when={post.status === 'submitted'}>
                         <Button
                           variant="solid"
                           size="sm"
@@ -286,16 +230,14 @@ function BlogList() {
                           Reject
                         </Button>
                       </Show>
-                      <Show when={canDelete(post)}>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setDeleteTarget(post)}
-                          disabled={busy()}
-                        >
-                          Delete
-                        </Button>
-                      </Show>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeleteTarget(post)}
+                        disabled={busy()}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>

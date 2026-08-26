@@ -1,4 +1,4 @@
-import { createContext, createEffect, createSignal, onCleanup, Show, useContext } from 'solid-js';
+import { createContext, createEffect, createSignal, Show, useContext } from 'solid-js';
 import type { Accessor, ParentProps } from 'solid-js';
 import { cn } from '../../lib/cn';
 
@@ -30,8 +30,8 @@ export function Dropdown(props: DropdownProps) {
   };
   const close = () => setOpen(false);
 
-  createEffect(() => {
-    if (!open()) return;
+  createEffect(() => open(), (o) => {
+    if (!o) return;
     const onPointerDown = (event: PointerEvent) => {
       if (containerRef && !containerRef.contains(event.target as Node)) close();
     };
@@ -43,10 +43,10 @@ export function Dropdown(props: DropdownProps) {
     };
     document.addEventListener('pointerdown', onPointerDown, true);
     document.addEventListener('keydown', onKeyDown, true);
-    onCleanup(() => {
+    return () => {
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown, true);
-    });
+    };
   });
 
   return (

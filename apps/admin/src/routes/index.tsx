@@ -1,12 +1,13 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
-import { Loading, Errored } from 'solid-js';
 import { query, revalidate } from '@solidjs/router';
+import type { Permission } from '@qrnlab/shared';
 import { api } from '../lib/api';
 import { useSession } from '../lib/session';
 import { toast } from '../lib/toast';
 import { RequireAuth } from './guard';
 import type { PendingRebuild, Profile } from '../lib/types';
 import { Badge } from '../components/ui/Badge';
+import type { BadgeTone } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -24,14 +25,29 @@ const getAdminMembers = query(
   'admin-members',
 );
 
-const QUICK_LINKS = [
-  { href: '/blog', label: 'Blog' },
-  { href: '/publications', label: 'Publications' },
-  { href: '/education', label: 'Education' },
-  { href: '/updates', label: 'Updates' },
-  { href: '/media', label: 'Media' },
-  { href: '/users', label: 'Users' },
-] as const;
+type QuickLink = { href: string; label: string; permission?: Permission };
+
+const PERSONAL_LINKS: QuickLink[] = [
+  { href: '/account', label: 'Profile' },
+  { href: '/account/posts', label: 'My posts' },
+  { href: '/account/posts/new', label: 'New post' },
+];
+
+const SECTION_LINKS: QuickLink[] = [
+  { href: '/blog', label: 'Blog', permission: 'content.moderate' },
+  { href: '/publications', label: 'Publications', permission: 'content.moderate' },
+  { href: '/education', label: 'Education', permission: 'content.moderate' },
+  { href: '/updates', label: 'Updates', permission: 'content.moderate' },
+  { href: '/media', label: 'Media', permission: 'media.manage' },
+  { href: '/team', label: 'Team', permission: 'team.review' },
+  { href: '/users', label: 'Users', permission: 'users.manage' },
+];
+
+const PROFILE_STATUS_TONE: Record<Profile['status'], BadgeTone> = {
+  approved: 'green',
+  pending: 'amber',
+  rejected: 'red',
+};
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -46,14 +62,59 @@ function errorMessage(err: unknown): string {
 export default function Dashboard() {
   const { session } = useSession();
   const user = () => session()?.user;
+  const profile = () => session()?.profile ?? null;
   const permissions = () => session()?.permissions ?? [];
 
   const canSiteStatus = () => permissions().includes('site.status');
   const canRebuild = () => permissions().includes('site.rebuild');
   const canTeamReview = () => permissions().includes('team.review');
 
-  const rebuildStatus = createMemo(() => getRebuildStatus());
-  const members = createMemo(() => getAdminMembers());
+  const sectionLinks = () =>
+    SECTION_LINKS.filter((link) => !link.permission || permissions().includes(link.permission));
+
+  const profileStatus = () => {
+    const p = profile();
+    return p ? { label: p.status, tone: PROFILE_STATUS_TONE[p.status] } : { label: 'Not set', tone: 'neutral' as BadgeTone };
+  };
+
+  const needsProfile = () => {
+    const p = profile();
+    return !p || p.status === 'rejected';
+  };
+
+  const [rebuildError, setRebuildError] = createSignal<string | null>(null);
+  const rebuildStatus = createMemo<{ pending: PendingRebuild[]; count: number } | undefined>(
+    async () => {
+      try {
+        const result = await getRebuildStatus();
+        setRebuildError(null);
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load rebuild status.';
+        setRebuildError(message);
+        return undefined;
+      }
+    },
+    { loadingValue: undefined },
+  );
+  const rebuildLoading = () => rebuildStatus() === undefined && !rebuildError();
+
+  const [membersError, setMembersError] = createSignal<string | null>(null);
+  const members = createMemo<{ profiles: Profile[] } | undefined>(
+    async () => {
+      try {
+        const result = await getAdminMembers();
+        setMembersError(null);
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load member submissions.';
+        setMembersError(message);
+        return undefined;
+      }
+    },
+    { loadingValue: undefined },
+  );
+  const membersLoading = () => members() === undefined && !membersError();
 
   const [rebuildOpen, setRebuildOpen] = createSignal(false);
   const [rebuilding, setRebuilding] = createSignal(false);
@@ -80,7 +141,7 @@ export default function Dashboard() {
           <span class="eyebrow">Dashboard</span>
           <div class="mt-1 flex flex-wrap items-center gap-3">
             <h1 class="font-display text-2xl font-bold tracking-[-0.02em] text-fg sm:text-3xl">
-              Welcome back, {user()?.name ?? 'Admin'}
+              Welcome back, {user()?.name ?? 'there'}
             </h1>
             <Badge tone="amber" dot>
               {user()?.role ?? 'user'}
@@ -93,54 +154,91 @@ export default function Dashboard() {
 
         <section class="grid gap-4 sm:grid-cols-2">
           <Show when={canSiteStatus()}>
-            <Errored
-              fallback={(err, reset) => (
-                <ErrorState
-                  title="Rebuild status unavailable"
-                  message={errorMessage(err())}
-                  retry={() => {
-                    revalidate('rebuild-status');
-                    reset();
-                  }}
-                />
-              )}
-            >
-              <Loading fallback={<Skeleton class="h-40 w-full" />}>
-                <RebuildPanel
-                  pending={rebuildStatus().pending}
-                  count={rebuildStatus().count}
-                  canRebuild={canRebuild()}
-                  rebuilding={rebuilding()}
-                  onRebuild={() => setRebuildOpen(true)}
-                />
-              </Loading>
-            </Errored>
+            <Show when={rebuildLoading()}>
+              <Skeleton class="h-40 w-full" />
+            </Show>
+
+            <Show when={rebuildError() && !rebuildStatus()}>
+              <ErrorState
+                title="Rebuild status unavailable"
+                message={errorMessage(rebuildError())}
+                retry={() => revalidate('rebuild-status')}
+              />
+            </Show>
+
+            <Show when={rebuildStatus()}>
+              <RebuildPanel
+                pending={rebuildStatus()!.pending}
+                count={rebuildStatus()!.count}
+                canRebuild={canRebuild()}
+                rebuilding={rebuilding()}
+                onRebuild={() => setRebuildOpen(true)}
+              />
+            </Show>
           </Show>
 
           <Show when={canTeamReview()}>
-            <Errored
-              fallback={(err, reset) => (
-                <ErrorState
-                  title="Team review unavailable"
-                  message={errorMessage(err())}
-                  retry={() => {
-                    revalidate('admin-members');
-                    reset();
-                  }}
-                />
-              )}
-            >
-              <Loading fallback={<Skeleton class="h-40 w-full" />}>
-                <TeamReviewCard
-                  pendingCount={members().profiles.filter((p) => p.status === 'pending').length}
-                />
-              </Loading>
-            </Errored>
+            <Show when={membersLoading()}>
+              <Skeleton class="h-40 w-full" />
+            </Show>
+
+            <Show when={membersError() && !members()}>
+              <ErrorState
+                title="Team review unavailable"
+                message={errorMessage(membersError())}
+                retry={() => revalidate('admin-members')}
+              />
+            </Show>
+
+            <Show when={members()}>
+              <TeamReviewCard
+                pendingCount={members()!.profiles.filter((p) => p.status === 'pending').length}
+              />
+            </Show>
           </Show>
         </section>
 
+        <Show when={needsProfile()}>
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius)] border border-amber/40 bg-amber/10 p-4">
+            <div>
+              <span class="font-mono text-[10.5px] uppercase tracking-[0.14em] text-fg-faint">Profile</span>
+              <p class="mt-1 max-w-prose text-sm leading-relaxed text-fg-soft">
+                {profile()
+                  ? 'Your profile was not approved yet — review the feedback and resubmit it.'
+                  : 'Complete your profile to appear on the QRNLab team page.'}
+              </p>
+            </div>
+            <Button as="a" href="/account/edit" size="sm">
+              {profile() ? 'Resubmit profile' : 'Complete profile'}
+            </Button>
+          </div>
+        </Show>
+
         <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <For each={QUICK_LINKS}>
+          <For each={PERSONAL_LINKS}>
+            {(link) => (
+              <a
+                href={link.href}
+                class="rounded-[var(--radius)] border border-border bg-bg-raised p-4 transition-colors hover:border-amber"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-mono text-[10.5px] uppercase tracking-[0.14em] text-fg-faint">Personal</span>
+                  <Show when={link.href === '/account'}>
+                    <Badge tone={profileStatus().tone} dot>
+                      {profileStatus().label}
+                    </Badge>
+                  </Show>
+                </div>
+                <span class="mt-1 block font-mono text-sm font-semibold uppercase tracking-[0.1em] text-fg">
+                  {link.label}
+                </span>
+              </a>
+            )}
+          </For>
+        </section>
+
+        <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <For each={sectionLinks()}>
             {(link) => (
               <a
                 href={link.href}

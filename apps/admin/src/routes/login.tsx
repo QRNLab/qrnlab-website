@@ -80,7 +80,7 @@ export default function Login() {
           Sign in
         </h1>
         <p class="mt-2 max-w-prose text-sm leading-relaxed text-fg-soft">
-          Access the QRNLab admin dashboard.
+          Access the QRNLab member portal.
         </p>
       </header>
 

@@ -1,42 +1,37 @@
 import { createMemo, createSignal, Show } from 'solid-js';
 import { query, revalidate, useNavigate, useParams } from '@solidjs/router';
-import { api } from '../../lib/api';
-import type { BlogPost } from '../../lib/types';
-import { BlogEditor } from '../../components/blog/BlogEditor';
-import { ErrorState } from '../../components/ui/ErrorState';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { RequireAuth, RequirePermission } from '../guard';
+import { api } from '../../../lib/api';
+import type { BlogPost } from '../../../lib/types';
+import { BlogEditor } from '../../../components/blog/BlogEditor';
+import { ErrorState } from '../../../components/ui/ErrorState';
+import { Skeleton } from '../../../components/ui/Skeleton';
+import { RequireAuth } from '../../guard';
 
-type BlogListResponse = {
+type MyPostsData = {
   posts: BlogPost[];
   me: { id: string; role: string; canModerate: boolean };
 };
 
-const getPosts = query(
-  () => api<BlogListResponse>('/content/blog'),
-  'blog-posts',
-);
+const getMyPosts = query(() => api<MyPostsData>('/content/blog?mine=1'), 'my-posts');
 
-export default function BlogPostPage() {
+export default function AccountPostPage() {
   return (
     <RequireAuth>
-      <RequirePermission permission="content.moderate">
-        <BlogPostEdit />
-      </RequirePermission>
+      <AccountPostEdit />
     </RequireAuth>
   );
 }
 
-function BlogPostEdit() {
+function AccountPostEdit() {
   const params = useParams();
   const navigate = useNavigate();
 
   const [error, setError] = createSignal<string | null>(null);
 
-  const data = createMemo<BlogListResponse | undefined>(
+  const data = createMemo<MyPostsData | undefined>(
     async () => {
       try {
-        const result = await getPosts();
+        const result = await getMyPosts();
         setError(null);
         return result;
       } catch (err) {
@@ -67,19 +62,19 @@ function BlogPostEdit() {
         <ErrorState
           title="Failed to load post"
           message={error() ?? 'Something went wrong.'}
-          retry={() => revalidate(getPosts.key)}
+          retry={() => revalidate(getMyPosts.key)}
         />
       </Show>
 
       <Show when={data() && !post() && !loading()}>
         <ErrorState
           title="Post not found"
-          message="This post does not exist, or you do not have access to it."
+          message="This post does not exist, or it does not belong to your account."
         />
       </Show>
 
       <Show when={post()}>
-        <BlogEditor initial={post()} onSaved={() => navigate('/blog')} />
+        <BlogEditor initial={post()} eyebrow="My posts" onSaved={() => navigate('/account/posts')} />
       </Show>
     </div>
   );

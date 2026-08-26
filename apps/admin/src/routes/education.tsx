@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
+import { createMemo, createSignal, For, Show } from 'solid-js';
 import type { Accessor } from 'solid-js';
 import { query, revalidate } from '@solidjs/router';
 import { extractYoutubeId, youtubeEmbedUrl } from '@qrnlab/shared';
@@ -14,7 +14,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EducationEditor } from '../components/education/EducationEditor';
-import { RequirePermission } from './guard';
+import { RequireAuth, RequirePermission } from './guard';
 
 type SectionKey = EducationEntry['section'];
 
@@ -197,30 +197,28 @@ function EducationSkeleton() {
 }
 
 export default function Education() {
-  const [entries, setEntries] = createSignal<EducationEntry[]>([]);
-  const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal<string | null>(null);
   const [editorOpen, setEditorOpen] = createSignal(false);
   const [editing, setEditing] = createSignal<EducationEntry | null>(null);
   const [deleteTarget, setDeleteTarget] = createSignal<EducationEntry | null>(null);
 
-  const load = () => {
-    setLoading(true);
-    return getEducation()
-      .then((data) => {
-        setEntries(data.entries);
+  const entriesQuery = createMemo<{ entries: EducationEntry[] } | undefined>(
+    async () => {
+      try {
+        const result = await getEducation();
         setError(null);
-      })
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Failed to load education entries.'),
-      )
-      .finally(() => setLoading(false));
-  };
+        return result;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load education entries.');
+        return undefined;
+      }
+    },
+    { loadingValue: undefined },
+  );
 
-  createEffect(() => {
-    void load();
-  });
+  const entries = () => entriesQuery()?.entries ?? [];
+  const loading = () => entriesQuery() === undefined && !error();
 
   const grouped = createMemo(() => {
     const groups: Record<SectionKey, EducationEntry[]> = {
@@ -293,7 +291,8 @@ export default function Education() {
   };
 
   return (
-    <RequirePermission permission="content.moderate">
+    <RequireAuth>
+      <RequirePermission permission="content.moderate">
       <div class="flex flex-col gap-6">
         <header class="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -316,7 +315,6 @@ export default function Education() {
               message={error() ?? undefined}
               retry={() => {
                 revalidate('education');
-                void load();
               }}
             />
           }
@@ -400,6 +398,7 @@ export default function Education() {
         destructive
         isLoading={busy() !== null}
       />
-    </RequirePermission>
+      </RequirePermission>
+    </RequireAuth>
   );
 }

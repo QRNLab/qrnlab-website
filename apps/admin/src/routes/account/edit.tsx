@@ -135,8 +135,7 @@ export default function AccountEdit() {
   const [uploading, setUploading] = createSignal(false);
   const [hydrated, setHydrated] = createSignal(false);
 
-  createEffect(() => {
-    const p = session()?.profile;
+  createEffect(() => session()?.profile ?? null, (p) => {
     if (!p || hydrated()) return;
     setForm(() => toFormState(p));
     setHydrated(true);

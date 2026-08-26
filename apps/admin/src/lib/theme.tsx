@@ -29,7 +29,7 @@ function applyTheme(theme: Theme): void {
 const store = createRoot(() => {
   const [theme, setTheme] = createSignal<Theme>(readStoredTheme() ?? systemTheme());
 
-  createEffect(() => applyTheme(theme()));
+  createEffect(() => theme(), (value) => applyTheme(value));
 
   const media = window.matchMedia?.('(prefers-color-scheme: dark)');
   const onSystemChange = (event: MediaQueryListEvent) => {

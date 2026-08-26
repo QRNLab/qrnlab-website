@@ -4,14 +4,12 @@ import { AppShell } from './components/layout/AppShell';
 import { Skeleton } from './components/ui';
 import { Toaster } from './components/ui/Toaster';
 import { Router } from './router';
-import { logoutAction, SessionProvider, useSession } from './lib/session';
+import { SessionProvider, logoutAction } from './lib/session';
 import './styles.css';
 
 function ShellLoader(props: ParentProps) {
-  const { session } = useSession();
-  const user = () => session()?.user ?? undefined;
   return (
-    <AppShell user={user()} onLogout={logoutAction}>
+    <AppShell onLogout={logoutAction}>
       <Loading
         fallback={
           <main class="mx-auto max-w-4xl space-y-4 p-6">

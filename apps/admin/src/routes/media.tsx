@@ -1,4 +1,4 @@
-import { createEffect, createSignal, For, Show } from 'solid-js';
+import { createMemo, createSignal, For, Show } from 'solid-js';
 import type { Accessor } from 'solid-js';
 import { query, revalidate } from '@solidjs/router';
 import { api, mediaUrl } from '../lib/api';
@@ -12,7 +12,7 @@ import { ErrorState } from '../components/ui/ErrorState';
 import { Field } from '../components/ui/Field';
 import { Select } from '../components/ui/Select';
 import { Skeleton } from '../components/ui/Skeleton';
-import { RequirePermission } from './guard';
+import { RequireAuth, RequirePermission } from './guard';
 
 type Purpose = 'avatar' | 'blog' | 'page';
 
@@ -120,8 +120,6 @@ function MediaSkeleton() {
 }
 
 export default function Media() {
-  const [assets, setAssets] = createSignal<MediaAsset[]>([]);
-  const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal<string | null>(null);
   const [uploading, setUploading] = createSignal(false);
@@ -129,20 +127,22 @@ export default function Media() {
   const [deleteTarget, setDeleteTarget] = createSignal<MediaAsset | null>(null);
   let fileRef: HTMLInputElement | undefined;
 
-  const load = () => {
-    setLoading(true);
-    return getMedia()
-      .then((data) => {
-        setAssets(data.media);
+  const assetsQuery = createMemo<{ media: MediaAsset[] } | undefined>(
+    async () => {
+      try {
+        const result = await getMedia();
         setError(null);
-      })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load media.'))
-      .finally(() => setLoading(false));
-  };
+        return result;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load media.');
+        return undefined;
+      }
+    },
+    { loadingValue: undefined },
+  );
 
-  createEffect(() => {
-    void load();
-  });
+  const assets = () => assetsQuery()?.media ?? [];
+  const loading = () => assetsQuery() === undefined && !error();
 
   const handleUpload = async (event: Event) => {
     const input = event.currentTarget as HTMLInputElement;
@@ -183,7 +183,8 @@ export default function Media() {
   };
 
   return (
-    <RequirePermission permission="media.manage">
+    <RequireAuth>
+      <RequirePermission permission="media.manage">
       <div class="flex flex-col gap-6">
         <header class="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -239,7 +240,6 @@ export default function Media() {
               message={error() ?? undefined}
               retry={() => {
                 revalidate('media');
-                void load();
               }}
             />
           }
@@ -285,6 +285,7 @@ export default function Media() {
         destructive
         isLoading={busy() !== null}
       />
-    </RequirePermission>
+      </RequirePermission>
+    </RequireAuth>
   );
 }

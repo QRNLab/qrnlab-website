@@ -281,15 +281,16 @@ app.post('/members', async (c) => {
 app.get('/content/blog', async (c) => {
   const user = await requireAuth(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const mine = c.req.query('mine') === '1';
   const db = getDb();
   const moderator = getPermissions(user).includes('content.moderate');
-  const posts = moderator
-    ? await db.select().from(blogPosts).orderBy(desc(blogPosts.updatedAt))
-    : await db
+  const posts = mine || !moderator
+    ? await db
         .select()
         .from(blogPosts)
         .where(eq(blogPosts.authorId, user.id))
-        .orderBy(desc(blogPosts.updatedAt));
+        .orderBy(desc(blogPosts.updatedAt))
+    : await db.select().from(blogPosts).orderBy(desc(blogPosts.updatedAt));
   return c.json({
     posts,
     me: { id: user.id, role: displayRole(user.role), canModerate: moderator },

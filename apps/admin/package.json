@@ -8,8 +8,9 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:api": "wrangler dev --port 8788 --local",
     "build": "vite build",
-    "preview": "wrangler dev",
+    "preview": "wrangler dev --port 8788 --local",
     "typecheck": "tsc --noEmit",
     "types": "wrangler types --include-runtime=false",
     "db:push": "drizzle-kit push",

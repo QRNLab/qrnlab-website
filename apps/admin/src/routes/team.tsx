@@ -1,9 +1,8 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
-import { Loading, Errored } from 'solid-js';
 import { query, revalidate } from '@solidjs/router';
 import { api } from '../lib/api';
 import { toast } from '../lib/toast';
-import { RequirePermission } from './guard';
+import { RequireAuth, RequirePermission } from './guard';
 import type { Profile } from '../lib/types';
 import { Badge } from '../components/ui/Badge';
 import type { BadgeTone } from '../components/ui/Badge';
@@ -50,11 +49,26 @@ const categoryTone = (category: Profile['category']): BadgeTone =>
   category === 'pi' ? 'amber' : category === 'alumni' ? 'neutral' : 'cyan';
 
 export default function TeamReview() {
-  const members = createMemo(() => getAdminMembers());
+  const [error, setError] = createSignal<string | null>(null);
+  const members = createMemo<{ profiles: Profile[] } | undefined>(
+    async () => {
+      try {
+        const result = await getAdminMembers();
+        setError(null);
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load member profiles.';
+        setError(message);
+        return undefined;
+      }
+    },
+    { loadingValue: undefined },
+  );
+  const loading = () => members() === undefined && !error();
   const [actingUserId, setActingUserId] = createSignal<string | null>(null);
   const [confirmFor, setConfirmFor] = createSignal<{ profile: Profile; action: 'approve' | 'reject' } | null>(null);
 
-  const profiles = () => members().profiles;
+  const profiles = () => members()?.profiles ?? [];
   const byStatus = (status: Profile['status']) => profiles().filter((p) => p.status === status);
 
   const act = async (userId: string, action: 'approve' | 'reject') => {
@@ -78,7 +92,8 @@ export default function TeamReview() {
   };
 
   return (
-    <RequirePermission permission="team.review">
+    <RequireAuth>
+      <RequirePermission permission="team.review">
       <div class="flex flex-col gap-6">
         <header>
           <span class="eyebrow">Team</span>
@@ -91,65 +106,64 @@ export default function TeamReview() {
           </p>
         </header>
 
-        <Errored
-          fallback={(err, reset) => (
-            <ErrorState
-              title="Could not load member profiles"
-              message={errorMessage(err())}
-              retry={() => {
-                revalidate('admin-members');
-                reset();
-              }}
-            />
-          )}
-        >
-          <Loading fallback={<Skeleton class="h-64" />}>
-            <Tabs defaultValue="pending">
-              <TabsList aria-label="Profile status">
-                <For each={STATUSES}>
-                  {(s) => (
-                    <TabsTrigger value={s.value}>
-                      {s.label} ({byStatus(s.value).length})
-                    </TabsTrigger>
-                  )}
-                </For>
-              </TabsList>
+        <Show when={loading()}>
+          <Skeleton class="h-64" />
+        </Show>
 
+        <Show when={error() && !members()}>
+          <ErrorState
+            title="Could not load member profiles"
+            message={errorMessage(error())}
+            retry={() => revalidate('admin-members')}
+          />
+        </Show>
+
+        <Show when={members()}>
+          <Tabs defaultValue="pending">
+            <TabsList aria-label="Profile status">
               <For each={STATUSES}>
                 {(s) => (
-                  <TabsContent value={s.value}>
-                    <Show
-                      when={byStatus(s.value).length > 0}
-                      fallback={
-                        <EmptyState
-                          title={`No ${s.label.toLowerCase()} profiles`}
-                          description={
-                            s.value === 'pending'
-                              ? 'New member submissions will appear here.'
-                              : `There are no ${s.label.toLowerCase()} profiles right now.`
-                          }
-                        />
-                      }
-                    >
-                      <div class="flex flex-col gap-3">
-                        <For each={byStatus(s.value)}>
-                          {(profile) => (
-                            <ProfileRow
-                              profile={profile}
-                              busy={actingUserId() === profile.userId}
-                              onApprove={() => setConfirmFor({ profile, action: 'approve' })}
-                              onReject={() => setConfirmFor({ profile, action: 'reject' })}
-                            />
-                          )}
-                        </For>
-                      </div>
-                    </Show>
-                  </TabsContent>
+                  <TabsTrigger value={s.value}>
+                    {s.label} ({byStatus(s.value).length})
+                  </TabsTrigger>
                 )}
               </For>
-            </Tabs>
-          </Loading>
-        </Errored>
+            </TabsList>
+
+            <For each={STATUSES}>
+              {(s) => (
+                <TabsContent value={s.value}>
+                  <Show
+                    when={byStatus(s.value).length > 0}
+                    fallback={
+                      <EmptyState
+                        title={`No ${s.label.toLowerCase()} profiles`}
+                        description={
+                          s.value === 'pending'
+                            ? 'New member submissions will appear here.'
+                            : `There are no ${s.label.toLowerCase()} profiles right now.`
+                        }
+                      />
+                    }
+                  >
+                    <div class="flex flex-col gap-3">
+                      <For each={byStatus(s.value)}>
+                        {(profile) => (
+                          <ProfileRow
+                            profile={profile}
+                            busy={actingUserId() === profile.userId}
+                            onApprove={() => setConfirmFor({ profile, action: 'approve' })}
+                            onReject={() => setConfirmFor({ profile, action: 'reject' })}
+                          />
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+                </TabsContent>
+              )}
+            </For>
+          </Tabs>
+        </Show>
       </div>
 
       <ConfirmDialog
@@ -170,7 +184,8 @@ export default function TeamReview() {
         confirmLabel={confirmFor()?.action === 'approve' ? 'Approve' : 'Reject'}
         destructive={confirmFor()?.action === 'reject'}
       />
-    </RequirePermission>
+      </RequirePermission>
+    </RequireAuth>
   );
 }
 

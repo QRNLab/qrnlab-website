@@ -1,3 +1,4 @@
+import { useNavigate } from '@solidjs/router';
 import { Badge } from '../ui/Badge';
 import {
   Dropdown,
@@ -14,6 +15,7 @@ export type UserMenuProps = {
 };
 
 export function UserMenu(props: UserMenuProps) {
+  const navigate = useNavigate();
   const initials = () =>
     props.user.name
       .split(/\s+/)
@@ -44,6 +46,13 @@ export function UserMenu(props: UserMenuProps) {
         <div class="px-2.5 pb-1.5">
           <Badge tone="amber">{props.user.role}</Badge>
         </div>
+        <DropdownSeparator />
+        <DropdownItem onSelect={() => navigate('/account')}>
+          Profile
+        </DropdownItem>
+        <DropdownItem onSelect={() => navigate('/account/posts')}>
+          My posts
+        </DropdownItem>
         <DropdownSeparator />
         <DropdownItem danger onSelect={() => props.onLogout?.()}>
           Sign out

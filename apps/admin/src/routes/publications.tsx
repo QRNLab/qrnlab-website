@@ -3,7 +3,7 @@ import { query, revalidate } from '@solidjs/router';
 import type { Publication } from '../lib/types';
 import { api, ApiError } from '../lib/api';
 import { toast } from '../lib/toast';
-import { RequirePermission } from './guard';
+import { RequireAuth, RequirePermission } from './guard';
 import { Badge } from '../components/ui/Badge';
 import type { BadgeTone } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -52,9 +52,10 @@ export default function Publications() {
 
   const pubs = createMemo<{ publications: Publication[] } | undefined>(
     async () => {
-      setLoadError(null);
       try {
-        return await getPubs();
+        const result = await getPubs();
+        setLoadError(null);
+        return result;
       } catch (err) {
         const message =
           err instanceof ApiError || err instanceof Error
@@ -127,7 +128,8 @@ export default function Publications() {
   };
 
   return (
-    <RequirePermission permission="content.moderate">
+    <RequireAuth>
+      <RequirePermission permission="content.moderate">
       <div class="flex flex-col gap-6">
         <div class="flex flex-wrap items-end justify-between gap-4">
           <header>
@@ -258,6 +260,7 @@ export default function Publications() {
           isLoading={deleting()}
         />
       </div>
-    </RequirePermission>
+      </RequirePermission>
+    </RequireAuth>
   );
 }
