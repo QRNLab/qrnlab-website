@@ -1,18 +1,18 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { query, revalidate, useNavigate } from '@solidjs/router';
-import type { Publication } from '../lib/types';
-import { api, ApiError } from '../lib/api';
-import { toast } from '../lib/toast';
-import { RequireAuth, RequirePermission } from './guard';
-import { Badge } from '../components/ui/Badge';
-import type { BadgeTone } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { EmptyState } from '../components/ui/EmptyState';
-import { ErrorState } from '../components/ui/ErrorState';
-import { Skeleton } from '../components/ui/Skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
-import { PublicationEditor } from '../components/publications/PublicationEditor';
+import type { Publication } from '../../lib/types';
+import { api, ApiError } from '../../lib/api';
+import { toast } from '../../lib/toast';
+import { RequireAuth, RequirePermission } from '../guard';
+import { Badge } from '../../components/ui/Badge';
+import type { BadgeTone } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
+import { PublicationEditor } from '../../components/publications/PublicationEditor';
 
 export const getPubs = query(
   () => api<{ publications: Publication[] }>('/content/publications'),

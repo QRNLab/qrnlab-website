@@ -2,19 +2,19 @@ import { createMemo, createSignal, For, Show } from 'solid-js';
 import { query, revalidate, useNavigate } from '@solidjs/router';
 import type { ZodIssue } from 'zod';
 import { updateSchema } from '@qrnlab/shared';
-import type { Update } from '../lib/types';
-import { api, ApiError } from '../lib/api';
-import { toast } from '../lib/toast';
-import { RequireAuth, RequirePermission } from './guard';
-import { Button } from '../components/ui/Button';
-import { Card, CardContent, CardHeader } from '../components/ui/Card';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { EmptyState } from '../components/ui/EmptyState';
-import { ErrorState } from '../components/ui/ErrorState';
-import { Field } from '../components/ui/Field';
-import { Input } from '../components/ui/Input';
-import { Skeleton } from '../components/ui/Skeleton';
-import { Textarea } from '../components/ui/Textarea';
+import type { Update } from '../../lib/types';
+import { api, ApiError } from '../../lib/api';
+import { toast } from '../../lib/toast';
+import { RequireAuth, RequirePermission } from '../guard';
+import { Button } from '../../components/ui/Button';
+import { Card, CardContent, CardHeader } from '../../components/ui/Card';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { Field } from '../../components/ui/Field';
+import { Input } from '../../components/ui/Input';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { Textarea } from '../../components/ui/Textarea';
 
 export const getUpdates = query(
   () => api<{ updates: Update[] }>('/content/updates'),

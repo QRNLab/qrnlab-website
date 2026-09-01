@@ -1,20 +1,20 @@
 import { createMemo, createSignal, Show } from 'solid-js';
 import { query, revalidate, useNavigate, useParams } from '@solidjs/router';
 import { marked } from 'marked';
-import { api } from '../../lib/api';
-import type { BlogPost, BlogSubmission } from '../../lib/types';
-import { toast } from '../../lib/toast';
-import { Badge } from '../../components/ui/Badge';
-import type { BadgeTone } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
-import { Dialog } from '../../components/ui/Dialog';
-import { ErrorState } from '../../components/ui/ErrorState';
-import { Field } from '../../components/ui/Field';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { Textarea } from '../../components/ui/Textarea';
-import { DiffView } from '../../components/review/DiffView';
-import { ReviewActions } from '../../components/review/ReviewActions';
-import { RequireAuth, RequirePermission } from '../guard';
+import { api } from '../../../lib/api';
+import type { BlogPost, BlogSubmission } from '../../../lib/types';
+import { toast } from '../../../lib/toast';
+import { Badge } from '../../../components/ui/Badge';
+import type { BadgeTone } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
+import { Dialog } from '../../../components/ui/Dialog';
+import { ErrorState } from '../../../components/ui/ErrorState';
+import { Field } from '../../../components/ui/Field';
+import { Skeleton } from '../../../components/ui/Skeleton';
+import { Textarea } from '../../../components/ui/Textarea';
+import { DiffView } from '../../../components/review/DiffView';
+import { ReviewActions } from '../../../components/review/ReviewActions';
+import { RequireAuth, RequirePermission } from '../../guard';
 
 type BlogDetailResponse = {
   post: BlogPost;

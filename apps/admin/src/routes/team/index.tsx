@@ -1,18 +1,18 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
 import { query, revalidate, useNavigate } from '@solidjs/router';
-import { api } from '../lib/api';
-import { toast } from '../lib/toast';
-import { RequireAuth, RequirePermission } from './guard';
-import type { Profile } from '../lib/types';
-import { Badge } from '../components/ui/Badge';
-import type { BadgeTone } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { EmptyState } from '../components/ui/EmptyState';
-import { ErrorState } from '../components/ui/ErrorState';
-import { Skeleton } from '../components/ui/Skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/Tabs';
+import { api } from '../../lib/api';
+import { toast } from '../../lib/toast';
+import { RequireAuth, RequirePermission } from '../guard';
+import type { Profile } from '../../lib/types';
+import { Badge } from '../../components/ui/Badge';
+import type { BadgeTone } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/Tabs';
 
 const getAdminMembers = query(
   () => api<{ profiles: Profile[] }>('/admin/members'),
