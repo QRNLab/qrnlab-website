@@ -37,6 +37,8 @@ export { OrbitLogo } from './OrbitLogo';
 export type { OrbitLogoProps } from './OrbitLogo';
 export { Select } from './Select';
 export type { SelectProps } from './Select';
+export { RoleSelect } from './RoleSelect';
+export type { RoleSelectProps } from './RoleSelect';
 export { Skeleton } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';
 export { Spinner } from './Spinner';

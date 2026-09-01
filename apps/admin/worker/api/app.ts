@@ -10,6 +10,7 @@ import { enqueueRebuild, getPendingRebuilds, markRebuilt, triggerRebuild } from 
 import { deleteImage, isAllowedMime, MAX_UPLOAD_BYTES, mediaUrl, uploadImage } from '../lib/media';
 import {
   blogPosts,
+  blogSubmissions,
   educationEntries,
   mediaAssets,
   memberProfiles,
@@ -79,10 +80,9 @@ app.post('/__build', async (c) => {
     data: {
       category: m.category,
       name: m.name,
-      title: m.title ?? undefined,
       image: m.image ?? undefined,
       role: m.role ?? undefined,
-      focus: m.focus ?? undefined,
+      researchIdentity: m.researchIdentity ?? undefined,
       email: m.email ?? undefined,
       website: m.website ?? undefined,
       scholar: m.scholar ?? undefined,
@@ -193,6 +193,48 @@ async function markSubmissionReviewed(
     .where(eq(profileSubmissions.id, pending.id));
 }
 
+function blogPayload(post: typeof blogPosts.$inferSelect) {
+  return { title: post.title, excerpt: post.excerpt, body: post.body, tags: post.tags ?? [] };
+}
+
+/** Refresh the open pending submission snapshot for a blog post, if any. */
+async function refreshBlogSubmission(db: Db, post: typeof blogPosts.$inferSelect): Promise<void> {
+  await db
+    .update(blogSubmissions)
+    .set({ payload: blogPayload(post), submittedAt: new Date() })
+    .where(
+      and(eq(blogSubmissions.postId, post.id), eq(blogSubmissions.status, 'pending')),
+    );
+}
+
+/** Finalize the latest pending submission of a blog post (publish/reject). */
+async function markBlogSubmissionReviewed(
+  db: Db,
+  postId: string,
+  status: 'approved' | 'rejected',
+  reviewedBy: string,
+  reviewNote: string | null = null,
+): Promise<void> {
+  const [pending] = await db
+    .select({ id: blogSubmissions.id })
+    .from(blogSubmissions)
+    .where(
+      and(eq(blogSubmissions.postId, postId), eq(blogSubmissions.status, 'pending')),
+    )
+    .orderBy(desc(blogSubmissions.submittedAt))
+    .limit(1);
+  if (!pending) return;
+  await db
+    .update(blogSubmissions)
+    .set({
+      status,
+      reviewedAt: new Date(),
+      reviewedBy,
+      reviewNote: reviewNote ?? undefined,
+    })
+    .where(eq(blogSubmissions.id, pending.id));
+}
+
 // --- Member profiles -------------------------------------------------------
 
 app.get('/members/me', async (c) => {
@@ -225,10 +267,9 @@ app.post('/members', async (c) => {
     status: 'pending',
     category,
     name: d.name,
-    title: d.title ?? null,
     image: d.image ?? null,
     role: d.role || null,
-    focus: d.focus || null,
+    researchIdentity: d.researchIdentity || null,
     email: d.email || null,
     bio: d.bio || null,
     website: d.website || null,
@@ -254,10 +295,9 @@ app.post('/members', async (c) => {
     payload: {
       category,
       name: d.name,
-      title: d.title ?? null,
       image: d.image ?? null,
       role: d.role ?? null,
-      focus: d.focus ?? null,
+      researchIdentity: d.researchIdentity ?? null,
       email: d.email ?? null,
       bio: d.bio ?? null,
       website: d.website ?? null,
@@ -295,6 +335,25 @@ app.get('/content/blog', async (c) => {
     posts,
     me: { id: user.id, role: displayRole(user.role), canModerate: moderator },
   });
+});
+
+app.get('/content/blog/:id', async (c) => {
+  const user = await requireAuth(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = getDb();
+  const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+  if (!post) return c.json({ error: 'Not found' }, 404);
+  const moderator = getPermissions(user).includes('content.moderate');
+  if (post.authorId !== user.id && !moderator) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+  const submissions = await db
+    .select()
+    .from(blogSubmissions)
+    .where(eq(blogSubmissions.postId, id))
+    .orderBy(desc(blogSubmissions.submittedAt));
+  return c.json({ post, submissions });
 });
 
 app.post('/content/blog', async (c) => {
@@ -347,6 +406,10 @@ app.put('/content/blog/:id', async (c) => {
   };
   if (wasPublished && !moderator) set.status = 'draft';
   await db.update(blogPosts).set(set).where(eq(blogPosts.id, id));
+  if (existing.status === 'submitted' && set.status !== 'draft') {
+    // Keep the open review snapshot in sync with author/moderator edits.
+    await refreshBlogSubmission(db, { ...existing, ...set });
+  }
   if (wasPublished) {
     await enqueueRebuild(db, 'blog', existing.slug, 'Edited published blog: ' + existing.title);
   }
@@ -370,6 +433,19 @@ app.post('/content/blog/:id/submit', async (c) => {
     .update(blogPosts)
     .set({ status: 'submitted', updatedAt: new Date() })
     .where(eq(blogPosts.id, id));
+  // One snapshot per submission cycle: replace any stale open snapshot, keep
+  // the finalized history (previous approved/rejected versions) for the diff.
+  await db
+    .delete(blogSubmissions)
+    .where(
+      and(eq(blogSubmissions.postId, id), eq(blogSubmissions.status, 'pending')),
+    );
+  await db.insert(blogSubmissions).values({
+    id: crypto.randomUUID(),
+    postId: id,
+    payload: blogPayload(post),
+    status: 'pending',
+  });
   return c.json({ ok: true });
 });
 
@@ -400,6 +476,7 @@ app.post('/content/blog/:id/publish', async (c) => {
       updatedAt: now,
     })
     .where(eq(blogPosts.id, id));
+  await markBlogSubmissionReviewed(db, id, 'approved', user.id);
   await enqueueRebuild(db, 'blog', slug, 'Published blog: ' + post.title);
   return c.json({ ok: true, slug });
 });
@@ -426,6 +503,7 @@ app.post('/content/blog/:id/reject', async (c) => {
       updatedAt: new Date(),
     })
     .where(eq(blogPosts.id, id));
+  await markBlogSubmissionReviewed(db, id, 'rejected', user.id, parsed.data.note ?? null);
   return c.json({ ok: true });
 });
 
@@ -458,6 +536,19 @@ app.get('/content/publications', async (c) => {
     .from(publicationEntries)
     .orderBy(desc(publicationEntries.updatedAt));
   return c.json({ publications: pubs });
+});
+
+app.get('/content/publications/:id', async (c) => {
+  const user = await requirePermission(c, 'content.moderate');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = getDb();
+  const [publication] = await db
+    .select()
+    .from(publicationEntries)
+    .where(eq(publicationEntries.id, id));
+  if (!publication) return c.json({ error: 'Not found' }, 404);
+  return c.json({ publication });
 });
 
 app.post('/content/publications', async (c) => {
@@ -586,6 +677,16 @@ app.get('/content/updates', async (c) => {
   return c.json({ updates });
 });
 
+app.get('/content/updates/:id', async (c) => {
+  const user = await requirePermission(c, 'content.moderate');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = getDb();
+  const [update] = await db.select().from(newsUpdates).where(eq(newsUpdates.id, id));
+  if (!update) return c.json({ error: 'Not found' }, 404);
+  return c.json({ update });
+});
+
 app.post('/content/updates', async (c) => {
   const user = await requirePermission(c, 'content.moderate');
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
@@ -631,6 +732,19 @@ app.get('/content/education', async (c) => {
     .from(educationEntries)
     .orderBy(asc(educationEntries.section), asc(educationEntries.sortOrder));
   return c.json({ entries });
+});
+
+app.get('/content/education/:id', async (c) => {
+  const user = await requirePermission(c, 'content.moderate');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { id } = c.req.param();
+  const db = getDb();
+  const [entry] = await db
+    .select()
+    .from(educationEntries)
+    .where(eq(educationEntries.id, id));
+  if (!entry) return c.json({ error: 'Not found' }, 404);
+  return c.json({ entry });
 });
 
 app.post('/content/education', async (c) => {
@@ -786,6 +900,24 @@ app.get('/admin/members', async (c) => {
     .from(memberProfiles)
     .orderBy(memberProfiles.updatedAt);
   return c.json({ profiles });
+});
+
+app.get('/admin/members/:userId', async (c) => {
+  const user = await requirePermission(c, 'team.review');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { userId } = c.req.param();
+  const db = getDb();
+  const [profile] = await db
+    .select()
+    .from(memberProfiles)
+    .where(eq(memberProfiles.userId, userId));
+  if (!profile) return c.json({ error: 'Not found' }, 404);
+  const submissions = await db
+    .select()
+    .from(profileSubmissions)
+    .where(eq(profileSubmissions.userId, userId))
+    .orderBy(desc(profileSubmissions.submittedAt));
+  return c.json({ profile, submissions });
 });
 
 app.post('/admin/members/:userId/approve', async (c) => {

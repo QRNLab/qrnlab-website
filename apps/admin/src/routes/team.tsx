@@ -1,5 +1,5 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
-import { query, revalidate } from '@solidjs/router';
+import { query, revalidate, useNavigate } from '@solidjs/router';
 import { api } from '../lib/api';
 import { toast } from '../lib/toast';
 import { RequireAuth, RequirePermission } from './guard';
@@ -50,6 +50,7 @@ const categoryTone = (category: Profile['category']): BadgeTone =>
 
 export default function TeamReview() {
   const [error, setError] = createSignal<string | null>(null);
+  const navigate = useNavigate();
   const members = createMemo<{ profiles: Profile[] } | undefined>(
     async () => {
       try {
@@ -152,6 +153,7 @@ export default function TeamReview() {
                           <ProfileRow
                             profile={profile}
                             busy={actingUserId() === profile.userId}
+                            onView={() => navigate(`/team/${profile.userId}`)}
                             onApprove={() => setConfirmFor({ profile, action: 'approve' })}
                             onReject={() => setConfirmFor({ profile, action: 'reject' })}
                           />
@@ -192,6 +194,7 @@ export default function TeamReview() {
 function ProfileRow(props: {
   profile: Profile;
   busy: boolean;
+  onView: () => void;
   onApprove: () => void;
   onReject: () => void;
 }) {
@@ -221,6 +224,9 @@ function ProfileRow(props: {
 
       <Show when={profile().status === 'pending'}>
         <div class="mt-4 flex items-center gap-2 border-t border-border pt-3">
+          <Button variant="ghost" size="sm" onClick={props.onView} disabled={props.busy}>
+            View
+          </Button>
           <Button size="sm" onClick={props.onApprove} disabled={props.busy}>
             Approve
           </Button>

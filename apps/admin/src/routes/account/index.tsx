@@ -115,7 +115,11 @@ export default function Account() {
               <CardHeader
                 eyebrow="Team profile"
                 title={p.name}
-                description={[p.title, p.currentPosition, p.currentInstitution].filter(Boolean).join(' · ')}
+                description={[
+                  ...(p.category !== 'alumni' ? [p.researchIdentity] : []),
+                  p.currentPosition,
+                  p.currentInstitution,
+                ].filter(Boolean).join(' · ')}
               />
               <CardContent class="flex flex-col gap-5">
                 <Show when={p.status === 'pending'}>
@@ -157,8 +161,8 @@ export default function Account() {
                   <Show when={p.role}>
                     <DetailRow label="Role">{p.role}</DetailRow>
                   </Show>
-                  <Show when={p.focus}>
-                    <DetailRow label="Focus">{p.focus}</DetailRow>
+                  <Show when={p.category !== 'alumni' && p.researchIdentity}>
+                    <DetailRow label="Research identity">{p.researchIdentity}</DetailRow>
                   </Show>
                   <DetailRow label="Email">
                     <a href={`mailto:${p.email ?? user()?.email}`} class="text-amber hover:underline">

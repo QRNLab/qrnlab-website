@@ -1,6 +1,6 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import type { Accessor } from 'solid-js';
-import { query, revalidate } from '@solidjs/router';
+import { query, revalidate, useNavigate } from '@solidjs/router';
 import { extractYoutubeId, youtubeEmbedUrl } from '@qrnlab/shared';
 import { api, mediaUrl } from '../lib/api';
 import { toast } from '../lib/toast';
@@ -45,6 +45,7 @@ type EntryCardProps = {
   busy: Accessor<string | null>;
   onMove: (entry: EducationEntry, direction: 'up' | 'down') => void;
   onPublish: (entry: EducationEntry) => void;
+  onView: (entry: EducationEntry) => void;
   onEdit: (entry: EducationEntry) => void;
   onDelete: (entry: EducationEntry) => void;
 };
@@ -155,6 +156,14 @@ function EntryCard(props: EntryCardProps) {
           </Button>
         </Show>
         <Button
+          variant="ghost"
+          size="xs"
+          disabled={props.busy() !== null}
+          onClick={() => props.onView(entry)}
+        >
+          View
+        </Button>
+        <Button
           variant="outline"
           size="xs"
           disabled={props.busy() !== null}
@@ -198,6 +207,7 @@ function EducationSkeleton() {
 
 export default function Education() {
   const [error, setError] = createSignal<string | null>(null);
+  const navigate = useNavigate();
   const [busy, setBusy] = createSignal<string | null>(null);
   const [editorOpen, setEditorOpen] = createSignal(false);
   const [editing, setEditing] = createSignal<EducationEntry | null>(null);
@@ -356,6 +366,7 @@ export default function Education() {
                                 busy={busy}
                                 onMove={onMove}
                                 onPublish={onPublish}
+                                onView={(e) => navigate(`/education/${e.id}`)}
                                 onEdit={(e) => openEditor(e)}
                                 onDelete={(e) => setDeleteTarget(e)}
                               />

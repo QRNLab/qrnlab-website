@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { TEAM_ROLES, type TeamRole } from './team-roles';
+
+const teamRoleEnum = z.enum(TEAM_ROLES.map((role) => role.value) as [TeamRole, ...TeamRole[]]);
 
 /**
  * Prepend https:// when a value has no scheme (http:, mailto:, tel:, /path...).
@@ -22,10 +25,9 @@ const linkItem = z.object({
 export const profileSchema = z.object({
   category: z.enum(['member', 'alumni']).default('member'),
   name: z.string().trim().min(1).max(200),
-  title: optionalText(200),
   image: z.string().trim().max(500).optional(),
-  role: optionalText(200),
-  focus: optionalText(200),
+  role: teamRoleEnum.optional(),
+  researchIdentity: optionalText(200),
   email: z.string().trim().max(200).optional(),
   bio: z.string().max(5000).optional(),
   website: optionalUrl,

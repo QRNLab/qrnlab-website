@@ -1,8 +1,9 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Avatar from "../components/Avatar.astro";
+import { MEDIA_BASE_URL } from "@qrnlab/shared";
 
-const media = (key: string) => `/media/uploads/page/affiliates/${key}`;
+const media = (key: string) => `${MEDIA_BASE_URL}/uploads/page/affiliates/${key}`;
 
 const affiliates = [
   {

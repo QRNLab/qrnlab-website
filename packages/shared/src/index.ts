@@ -1,4 +1,6 @@
 export { autoExcerpt } from './excerpt';
+export { diffLines, diffField } from './diff';
+export type { DiffHunk, FieldDiff } from './diff';
 export {
   profileSchema,
   blogSchema,
@@ -9,6 +11,8 @@ export {
   educationSchema,
 } from './forms';
 export type { PublicationAuthor } from './forms';
+export { TEAM_ROLES } from './team-roles';
+export type { TeamRole } from './team-roles';
 export { extractYoutubeId, youtubeEmbedUrl } from './youtube';
 export { slugify } from './slugify';
 export { MEDIA_BASE_URL, rewriteMediaUrls } from './media-url';

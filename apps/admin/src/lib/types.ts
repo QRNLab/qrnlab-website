@@ -37,10 +37,9 @@ export type Profile = {
   slug: string | null;
   category: 'pi' | 'member' | 'alumni';
   name: string;
-  title: string | null;
   image: string | null;
   role: string | null;
-  focus: string | null;
+  researchIdentity: string | null;
   email: string | null;
   bio: string | null;
   website: string | null;
@@ -166,4 +165,27 @@ export type PendingRebuild = {
   createdAt: string;
   status: 'pending' | 'built';
   builtAt: string | null;
+};
+
+/** A blog submission snapshot (`blog_submissions`). */
+export type BlogSubmission = {
+  id: string;
+  postId: string;
+  payload: { title: string; excerpt: string | null; body: string; tags: string[] };
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewNote: string | null;
+};
+
+/** A member profile submission snapshot (`profile_submissions`). */
+export type ProfileSubmission = {
+  id: string;
+  userId: string;
+  payload: Record<string, unknown>;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
 };

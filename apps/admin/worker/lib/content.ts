@@ -7,7 +7,7 @@ export interface TeamProfileData {
   name: string;
   image?: string | null;
   role?: string | null;
-  focus?: string | null;
+  researchIdentity?: string | null;
   email?: string | null;
   bio?: string | null;
   website?: string | null;

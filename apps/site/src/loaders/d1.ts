@@ -163,10 +163,9 @@ async function tryLoadLocalD1(
       data: {
         category: m.category,
         name: m.name,
-        title: m.title ?? undefined,
         image: m.image ?? undefined,
         role: m.role ?? undefined,
-        focus: m.focus ?? undefined,
+        researchIdentity: m.researchIdentity ?? undefined,
         email: m.email ?? undefined,
         website: m.website ?? undefined,
         scholar: m.scholar ?? undefined,

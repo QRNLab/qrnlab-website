@@ -1,5 +1,5 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
-import { query, revalidate } from '@solidjs/router';
+import { query, revalidate, useNavigate } from '@solidjs/router';
 import type { ZodIssue } from 'zod';
 import { updateSchema } from '@qrnlab/shared';
 import type { Update } from '../lib/types';
@@ -51,6 +51,7 @@ function UpdatesListSkeleton() {
 
 export default function Updates() {
   const [loadError, setLoadError] = createSignal<string | null>(null);
+  const navigate = useNavigate();
 
   const updates = createMemo<{ updates: Update[] } | undefined>(
     async () => {
@@ -183,24 +184,33 @@ export default function Updates() {
                           </span>
                           <p class="max-w-prose text-sm leading-relaxed text-fg">{update.text}</p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          class="shrink-0 text-fg-faint hover:text-red"
-                          aria-label="Delete update"
-                          onClick={() => setDeleteTarget(update)}
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.8"
-                            class="h-4 w-4"
-                            aria-hidden="true"
+                        <div class="flex shrink-0 items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => navigate(`/updates/${update.id}`)}
                           >
-                            <path d="M6 6l12 12M18 6L6 18" />
-                          </svg>
-                        </Button>
+                            View
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            class="text-fg-faint hover:text-red"
+                            aria-label="Delete update"
+                            onClick={() => setDeleteTarget(update)}
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.8"
+                              class="h-4 w-4"
+                              aria-hidden="true"
+                            >
+                              <path d="M6 6l12 12M18 6L6 18" />
+                            </svg>
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </For>

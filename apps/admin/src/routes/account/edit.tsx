@@ -1,11 +1,12 @@
 import { createEffect, createSignal, createStore, For, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { z } from 'zod';
-import { profileSchema } from '@qrnlab/shared';
+import { profileSchema, TEAM_ROLES } from '@qrnlab/shared';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardFooter, CardHeader } from '../../components/ui/Card';
 import { Field } from '../../components/ui/Field';
 import { Input } from '../../components/ui/Input';
+import { RoleSelect } from '../../components/ui/RoleSelect';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { api, mediaUrl } from '../../lib/api';
@@ -19,9 +20,8 @@ type LinkRow = { label: string; url: string };
 type FormState = {
   category: 'member' | 'alumni';
   name: string;
-  title: string;
   role: string;
-  focus: string;
+  researchIdentity: string;
   email: string;
   bio: string;
   website: string;
@@ -39,9 +39,8 @@ type FormState = {
 const EMPTY_FORM: FormState = {
   category: 'member',
   name: '',
-  title: '',
   role: '',
-  focus: '',
+  researchIdentity: '',
   email: '',
   bio: '',
   website: '',
@@ -61,9 +60,8 @@ function toFormState(profile: Profile | null): FormState {
   return {
     category: profile.category === 'pi' ? 'member' : profile.category,
     name: profile.name,
-    title: profile.title ?? '',
-    role: profile.role ?? '',
-    focus: profile.focus ?? '',
+    role: profile.role && TEAM_ROLES.some((role) => role.value === profile.role) ? profile.role : '',
+    researchIdentity: profile.researchIdentity ?? '',
     email: profile.email ?? '',
     bio: profile.bio ?? '',
     website: profile.website ?? '',
@@ -102,10 +100,9 @@ function mergeProfile(
     slug: existing?.slug ?? null,
     category: existing?.category === 'pi' ? 'pi' : values.category,
     name: values.name,
-    title: values.title ?? null,
     image: values.image ?? null,
     role: values.role ?? null,
-    focus: values.focus ?? null,
+    researchIdentity: values.researchIdentity ?? null,
     email: values.email ?? null,
     bio: values.bio ?? null,
     website: values.website ?? null,
@@ -190,10 +187,9 @@ export default function AccountEdit() {
     const payload = {
       category: form.category,
       name: form.name,
-      title: form.title.trim() || undefined,
       image: form.image || undefined,
       role: form.role.trim() || undefined,
-      focus: form.focus.trim() || undefined,
+      researchIdentity: form.researchIdentity.trim() || undefined,
       email: form.email.trim() || undefined,
       bio: form.bio || undefined,
       website: form.website.trim() || undefined,
@@ -289,33 +285,23 @@ export default function AccountEdit() {
                     placeholder="Ada Lovelace"
                   />
                 </Field>
-                <Field label="Title" error={errorFor('title')}>
-                  <Input
-                    type="text"
-                    name="title"
-                    value={form.title}
-                    onInput={(event) => setForm((s) => { s.title = event.currentTarget.value; })}
-                    placeholder="Research associate"
-                  />
-                </Field>
                 <Field label="Role" error={errorFor('role')}>
-                  <Input
-                    type="text"
-                    name="role"
+                  <RoleSelect
                     value={form.role}
-                    onInput={(event) => setForm((s) => { s.role = event.currentTarget.value; })}
-                    placeholder="Quantum computation"
+                    onSelect={(role) => setForm((s) => { s.role = role; })}
                   />
                 </Field>
-                <Field label="Focus" error={errorFor('focus')}>
-                  <Input
-                    type="text"
-                    name="focus"
-                    value={form.focus}
-                    onInput={(event) => setForm((s) => { s.focus = event.currentTarget.value; })}
-                    placeholder="Open quantum systems"
-                  />
-                </Field>
+                <Show when={form.category !== 'alumni'}>
+                  <Field label="Research Identity" error={errorFor('researchIdentity')}>
+                    <Input
+                      type="text"
+                      name="researchIdentity"
+                      value={form.researchIdentity}
+                      onInput={(event) => setForm((s) => { s.researchIdentity = event.currentTarget.value; })}
+                      placeholder="Computational Quantum Theorist"
+                    />
+                  </Field>
+                </Show>
                 <Field label="Email" error={errorFor('email')}>
                   <Input
                     type="email"

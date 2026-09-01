@@ -1,5 +1,5 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
-import { query, revalidate } from '@solidjs/router';
+import { query, revalidate, useNavigate } from '@solidjs/router';
 import type { Publication } from '../lib/types';
 import { api, ApiError } from '../lib/api';
 import { toast } from '../lib/toast';
@@ -49,6 +49,7 @@ function PublicationsListSkeleton() {
 
 export default function Publications() {
   const [loadError, setLoadError] = createSignal<string | null>(null);
+  const navigate = useNavigate();
 
   const pubs = createMemo<{ publications: Publication[] } | undefined>(
     async () => {
@@ -206,6 +207,13 @@ export default function Publications() {
                         </TableCell>
                         <TableCell>
                           <div class="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => navigate(`/publications/${publication.id}`)}
+                            >
+                              View
+                            </Button>
                             <Button
                               variant="outline"
                               size="xs"

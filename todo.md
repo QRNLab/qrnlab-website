@@ -10,3 +10,9 @@
 [x]. in team memeber publications, add left bar (quote line same as the ones in affiliations page) to make separation between different publications clear.
 [x]. bug in navigation menu: active links are not highlighted in production: suspect is traling slash or something related to it, team shows color fine
 [x]. blogs view page needs author detail one line below author name
+
+
+## new
+[ ]. affiliates images are not loading
+[ ]. dropdown in profile, for role
+[ ]. every review item should have optional details page

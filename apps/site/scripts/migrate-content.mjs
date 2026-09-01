@@ -66,8 +66,8 @@ for (const file of teamFiles) {
   const userId = userIdBySlug[slug];
   const category = data.category === 'pi' ? 'pi' : data.category === 'alumni' ? 'alumni' : 'member';
   lines.push(
-    `INSERT INTO member_profiles ("userId", status, slug, category, name, title, image, role, focus, email, bio, website, scholar, linkedin, github, "currentPosition", "currentInstitution", "institutionPage", "yearGraduated", links, publications, "createdAt", "updatedAt") VALUES (` +
-      `${esc(userId)}, 'approved', ${esc(slug)}, ${esc(category)}, ${esc(data.name)}, ${esc(data.title ?? null)}, ${esc(data.image ?? null)}, ${esc(data.role ?? null)}, ${esc(data.focus ?? null)}, ${esc(data.email ?? null)}, ${esc(body || null)}, ${esc(data.website ?? null)}, ${esc(data.scholar ?? null)}, ${esc(data.linkedin ?? null)}, ${esc(data.github ?? null)}, ${esc(data.currentPosition ?? null)}, ${esc(data.currentInstitution ?? null)}, ${esc(data.institutionPage ?? null)}, ${data.yearGraduated ?? 'NULL'}, ${escJson(data.links)}, ${escJson(data.publications)}, ${now}, ${now});`,
+    `INSERT INTO member_profiles ("userId", status, slug, category, name, image, role, "researchIdentity", email, bio, website, scholar, linkedin, github, "currentPosition", "currentInstitution", "institutionPage", "yearGraduated", links, publications, "createdAt", "updatedAt") VALUES (` +
+      `${esc(userId)}, 'approved', ${esc(slug)}, ${esc(category)}, ${esc(data.name)}, ${esc(data.image ?? null)}, ${esc(data.role ?? null)}, ${esc(data.researchIdentity ?? null)}, ${esc(data.email ?? null)}, ${esc(body || null)}, ${esc(data.website ?? null)}, ${esc(data.scholar ?? null)}, ${esc(data.linkedin ?? null)}, ${esc(data.github ?? null)}, ${esc(data.currentPosition ?? null)}, ${esc(data.currentInstitution ?? null)}, ${esc(data.institutionPage ?? null)}, ${data.yearGraduated ?? 'NULL'}, ${escJson(data.links)}, ${escJson(data.publications)}, ${now}, ${now});`,
   );
 }
 

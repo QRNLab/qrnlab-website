@@ -60,10 +60,9 @@ export type MemberProfile = {
   status: 'pending' | 'approved' | 'rejected';
   category: 'pi' | 'member' | 'alumni';
   name: string;
-  title?: string | null;
   image?: string | null;
   role?: string | null;
-  focus?: string | null;
+  researchIdentity?: string | null;
   email?: string | null;
   bio?: string | null;
   website?: string | null;
@@ -86,10 +85,9 @@ export const memberProfiles = sqliteTable('member_profiles', {
   slug: text('slug'),
   category: text('category').notNull().default('member'),
   name: text('name').notNull(),
-  title: text('title'),
   image: text('image'),
   role: text('role'),
-  focus: text('focus'),
+  researchIdentity: text('researchIdentity'),
   email: text('email'),
   bio: text('bio'),
   website: text('website'),
@@ -166,6 +164,32 @@ export const profileSubmissions = sqliteTable('profile_submissions', {
   reviewedBy: text('reviewedBy'),
 });
 
+export type BlogSubmissionPayload = {
+  title: string;
+  excerpt: string | null;
+  body: string;
+  tags: string[];
+};
+
+/**
+ * Snapshot of a blog post taken each time it is submitted for review. One row
+ * per submission cycle: a `pending` row is created on submit (refreshed while
+ * the post stays in `submitted`), then finalized to `approved` (publish) or
+ * `rejected` (reject). The history powers the review diff view.
+ */
+export const blogSubmissions = sqliteTable('blog_submissions', {
+  id: text('id').primaryKey(),
+  postId: text('postId')
+    .notNull()
+    .references(() => blogPosts.id, { onDelete: 'cascade' }),
+  payload: text('payload', { mode: 'json' }).$type<BlogSubmissionPayload>().notNull(),
+  status: text('status').notNull().default('pending'),
+  submittedAt: integer('submittedAt', { mode: 'timestamp_ms' }).notNull().defaultNow(),
+  reviewedAt: integer('reviewedAt', { mode: 'timestamp_ms' }),
+  reviewedBy: text('reviewedBy'),
+  reviewNote: text('reviewNote'),
+});
+
 export const educationEntries = sqliteTable('education_entries', {
   id: text('id').primaryKey(),
   section: text('section').notNull().default('lecture-notes'),
@@ -226,6 +250,7 @@ export const schema = {
   blogPosts,
   publicationEntries,
   profileSubmissions,
+  blogSubmissions,
   mediaAssets,
   newsUpdates,
   educationEntries,

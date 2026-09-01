@@ -43,6 +43,20 @@
       "when": 1787571946374,
       "tag": "0005_medical_bruce_banner",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788289595298,
+      "tag": "0006_colossal_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788291385388,
+      "tag": "0007_true_mephistopheles",
+      "breakpoints": true
     }
   ]
 }

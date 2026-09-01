@@ -207,6 +207,14 @@ function BlogList() {
                         onClick={() => navigate(`/blog/${post.id}`)}
                         disabled={busy()}
                       >
+                        Review
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/blog/${post.id}/edit`)}
+                        disabled={busy()}
+                      >
                         Edit
                       </Button>
                       <Show when={post.status === 'submitted'}>

@@ -17,7 +17,7 @@ const team = await getCollection("team");
 const authorEntry = post.data.author
   ? team.find((t) => t.data.name === post.data.author)
   : undefined;
-const authorLine = authorEntry?.data.focus || authorEntry?.data.role;
+const authorLine = authorEntry?.data.researchIdentity || authorEntry?.data.role;
 ---
 
 <BaseLayout title={post.data.title} description={post.data.excerpt}>
