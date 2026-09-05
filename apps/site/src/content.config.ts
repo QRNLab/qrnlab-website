@@ -58,7 +58,7 @@ const projects = defineCollection({
   loader: glob({ pattern: '**/*.md', base: 'src/content/projects' }),
   schema: z.object({
     title: z.string(),
-    domain: z.enum(['nuclear-interactions', 'radiation-shielding', 'quantum-physics', 'quantum-computing']),
+    domain: z.enum(['nuclear-interactions', 'radiation-shielding', 'quantum-computing']),
     status: z.enum(['active', 'completed']).default('active'),
     lead: z.string(),
     researchers: z.array(z.string()).optional(),

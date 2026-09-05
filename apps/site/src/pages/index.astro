@@ -6,21 +6,23 @@ const updates = (await getCollection("updates"))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 ---
 
-<BaseLayout title="Home" description="QRNLab — Bridging Nuclear, Quantum, and Astrophysical Frontiers through Research and Innovation">
+<BaseLayout title="Home" description="QRNLab — Bridging Nuclear and Quantum Frontiers through Research and Innovation">
   <section class="mb-16 grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
     <div class="max-w-xl">
+      <h1 class="text-4xl font-semibold tracking-tight">QRNLab</h1>
+      <p class="mt-2 text-lg text-neutral-500 dark:text-neutral-400">
+        Bridging Nuclear and Quantum Frontiers through Research and Innovation
+      </p>
       <a
         href="https://www.google.com/maps/place/22%C2%B028'12.8%22N+91%C2%B046'53.7%22E/@22.470218,91.7809313,19z"
         target="_blank"
         rel="noopener"
         class="hero-loc"
-      >CHITTAGONG, BANGLADESH 22.470218&deg;N, 91.7809313&deg;E</a>
-      <h1 class="text-4xl font-semibold tracking-tight">QRNLab</h1>
-      <p class="mt-2 text-lg text-neutral-500 dark:text-neutral-400">
-        Bridging Nuclear, Quantum, and Astrophysical Frontiers through Research and Innovation
-      </p>
+      >
+        CHITTAGONG, BANGLADESH &middot; 22.470218&deg;N, 91.7809313&deg;E
+      </a>
       <p class="mt-6 text-neutral-700 dark:text-neutral-300 leading-relaxed">
-        QRNLab is a multidisciplinary research group dedicated to advancing fundamental and applied physics. Our work spans a wide spectrum of domains, from nuclear and medical physics to quantum computing and astrophysics. The lab operates under the guidance of Dr. Quazi Muhammad Rashed Nizam, whose expertise in nuclear physics forms the foundation of our experimental and theoretical investigations.
+        QRNLab is a multidisciplinary research group dedicated to advancing fundamental and applied physics. Our work spans a wide spectrum of domains, from nuclear and medical physics to quantum computing. The lab operates under the guidance of Dr. Quazi Muhammad Rashed Nizam, whose expertise in nuclear physics forms the foundation of our experimental and theoretical investigations.
       </p>
     </div>
     <div class="order-first flex justify-center lg:order-none" aria-hidden="true">
@@ -53,7 +55,7 @@ const updates = (await getCollection("updates"))
     <a href="/research" class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-6 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
       <h2 class="text-lg font-medium text-neutral-900 dark:text-neutral-100">Research</h2>
       <p class="mt-1.5 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
-        Nuclear interactions, radiation shielding, quantum physics, and quantum computing.
+        Nuclear interactions, radiation shielding, and quantum computing.
       </p>
     </a>
     <a href="/team" class="block rounded-lg border border-neutral-200 dark:border-neutral-700 p-6 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition-colors">
