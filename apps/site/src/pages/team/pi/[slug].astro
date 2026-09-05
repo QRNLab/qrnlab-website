@@ -14,6 +14,13 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const { data, body } = entry;
 const pubs = data.publications || [];
+
+const structuredLinks = [
+  { label: "Google Scholar", url: data.scholar },
+  { label: "LinkedIn", url: data.linkedin },
+].filter((l) => l.url);
+
+const arbitraryLinks = data.links || [];
 ---
 
 <BaseLayout title={data.name} description={`${data.name} — Principal Investigator, QRNLab`}>
@@ -34,18 +41,22 @@ const pubs = data.publications || [];
     </div>
   </div>
 
-  <div class="mt-6 flex flex-wrap gap-4">
-    {data.scholar && (
-      <a href={data.scholar} target="_blank" rel="noopener noreferrer" class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-blue-700 dark:hover:text-blue-400 transition-colors">
-        Google Scholar
-      </a>
-    )}
-    {data.linkedin && (
-      <a href={data.linkedin} target="_blank" rel="noopener noreferrer" class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-blue-700 dark:hover:text-blue-400 transition-colors">
-        LinkedIn
-      </a>
-    )}
-  </div>
+  {(structuredLinks.length > 0 || arbitraryLinks.length > 0) && (
+    <ul class="mt-6 flex flex-wrap gap-x-5 gap-y-1">
+      {structuredLinks.concat(arbitraryLinks).map((link) => (
+        <li>
+          <a
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
+          >
+            {link.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  )}
 
   {body && (
     <section class="mt-8">
