@@ -26,7 +26,7 @@ const arbitraryLinks = data.links || [];
 <BaseLayout title={data.name} description={`${data.name} — Principal Investigator, QRNLab`}>
   <div class="flex items-start gap-6">
     <Avatar name={data.name} image={data.image} size={144} />
-    <div>
+    <div class="min-w-0 break-words">
       <h1 class="text-3xl font-semibold tracking-tight">{data.name}</h1>
       {(data.currentPosition || data.currentInstitution) && (
         <p class="mt-2 text-lg font-medium text-amber-600 dark:text-amber-400">

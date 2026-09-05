@@ -28,7 +28,7 @@ const pubs = data.publications || [];
 <BaseLayout title={data.name} description={`${data.name} — ${data.role}, QRNLab`}>
   <div class="flex items-start gap-6">
     <Avatar name={data.name} image={data.image} size={144} />
-    <div>
+    <div class="min-w-0 break-words">
       <h1 class="text-3xl font-semibold tracking-tight">{data.name}</h1>
       {data.role && <p class="mt-1 text-neutral-600 dark:text-neutral-400">{data.role}</p>}
       {data.researchIdentity && <p class="text-sm text-neutral-500 dark:text-neutral-400">{data.researchIdentity}</p>}
